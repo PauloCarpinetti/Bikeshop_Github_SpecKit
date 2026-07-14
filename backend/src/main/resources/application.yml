@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: bikeshop-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3307/bikeshop?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:bikeshop}
+    password: ${DB_PASSWORD:bikeshop}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+server:
+  # Porta 8081 (não 8080) para não conflitar com outros serviços já rodando na máquina.
+  port: ${SERVER_PORT:8081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+meilisearch:
+  host: ${MEILISEARCH_HOST:http://localhost:7700}
+  api-key: ${MEILISEARCH_API_KEY:masterKey}
+
+bikeshop:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:change-me-in-production-change-me-in-production}
+      access-token-ttl-minutes: 15
+      refresh-token-ttl-days: 7
+  cors:
+    allowed-origin: ${FRONTEND_ORIGIN:http://localhost:3002}
+  cart:
+    ttl-days: ${CART_TTL_DAYS:30}
+
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:local}
+  traces-sample-rate: 0.2

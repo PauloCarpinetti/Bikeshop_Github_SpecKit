@@ -1,0 +1,57 @@
+1. Usuário Visitante (Unauthenticated)
+O objetivo principal desta persona é a descoberta de produtos e a redução de fricção até a criação da conta ou adição ao carrinho.
+Explorar Catálogo: Navegar por categorias estruturadas (ex: Mountain Bike, Speed, Urbana, Vestuário, Componentes).
+Filtragem Avançada: Filtrar produtos por atributos específicos do domínio (tamanho do quadro, aro, material do quadro, tipo de suspensão, marca).
+Busca Textual: Buscar produtos por nome, modelo ou código de peça.
+Visualizar Detalhes do Produto: Consultar página de detalhes da bicicleta, incluindo tabela de geometria, especificações de componentes (grupo de marchas, freios), fotos em alta resolução e disponibilidade em estoque.
+Gestão de Carrinho (Guest): Adicionar, remover ou alterar a quantidade de itens em um carrinho temporário persistido na sessão local.
+Simulação de Frete: Calcular estimativa de custo e prazo de entrega inserindo o CEP, considerando as regras de cubagem para caixas de bicicletas.
+Registro de Conta: Criar um perfil de cliente fornecendo dados básicos para transição de visitante para cliente logado.
+👤 2. Cliente Logado (Authenticated Customer)
+Esta persona exige um ambiente seguro, estado persistente e ferramentas de autoatendimento para pós-venda.
+Autenticação Segura: Realizar login e logout no sistema (gerenciamento de sessão segura com tokens de acesso).
+Gestão do Perfil: Atualizar dados cadastrais, alterar senha e gerenciar preferências de comunicação (opt-in para newsletter).
+Gestão de Endereços: Manter um catálogo de endereços (residencial, trabalho) para agilizar o checkout.
+Checkout Completo: Finalizar o pedido, escolhendo o método de envio e processando o pagamento via integração com gateway.
+Acompanhamento de Pedidos: Visualizar o histórico de compras e rastrear o status de um pedido em andamento (Aguardando Pagamento, Em Montagem/Separação, Faturado, Despachado).
+Gestão de Pós-Venda: Solicitar devoluções, trocas ou acionar garantia para bicicletas ou peças com defeito de fábrica.
+Avaliação de Produtos: Enviar reviews e notas (estrelas) para produtos adquiridos e confirmados como entregues.
+👤 3. Administrador do Negócio (Business/Backoffice Admin)
+Esta persona representa o lojista, a equipe de marketing e o time de expedição. O foco é a operação diária, gestão de catálogo e análise de vendas.
+Gestão de Catálogo (CRUD): Criar, ler, atualizar e excluir produtos. Isso inclui gerenciar atributos complexos, variações (SKUs diferentes para tamanhos e cores) e tabelas de medidas.
+Gestão de Estoque: Registrar entrada de mercadorias, ajustar inventário manualmente e configurar alertas para produtos com estoque baixo.
+Gestão de Pedidos (Fulfillment): Visualizar a fila de pedidos, atualizar status manualmente (ex: confirmar que a bicicleta foi montada e embalada), emitir notas fiscais e gerar etiquetas de postagem.
+Gestão de Promoções: Criar cupons de desconto (com regras de negócio como valor mínimo ou categoria específica) e gerenciar campanhas de preço.
+Moderação de Conteúdo: Aprovar, rejeitar ou responder às avaliações deixadas pelos clientes.
+Gestão de Clientes (CRM Base): Visualizar a base de clientes, histórico de compras de um usuário específico e interações de suporte.
+Análise e Relatórios: Extrair relatórios consolidados de vendas, produtos mais vendidos, ticket médio e taxas de conversão.
+👤 4. Administrador do Sistema de TI (SysAdmin/Technical Admin)
+Esta persona foca na saúde, segurança e configuração técnica da plataforma, garantindo que o software e a infraestrutura operem corretamente.
+Controle de Acesso (RBAC): Gerenciar perfis e permissões dos administradores do negócio (ex: criar uma role que só permite ver pedidos, mas não alterar preços de produtos).
+Gestão de Integrações: Configurar chaves de API, webhooks e credenciais para serviços externos (gateways de pagamento, ERPs, transportadoras e provedores de e-mail).
+Auditoria e Logs: Acessar a trilha de auditoria (Audit Logs) para rastrear ações críticas no sistema (ex: quem alterou o preço de um componente ou quem estornou um pedido).
+Monitoramento de Sistema: Visualizar dashboards de integridade do sistema, fila de processamento assíncrono (ex: e-mails falhos) e erros não tratados.
+Gestão de Banco de Dados/Infraestrutura: Disparar rotinas de manutenção, visualizar o status de migrações de schema aplicadas ao banco de dados e agendar extração de dumps de dados.
+Gestão de Segurança: Forçar invalidação de sessões de usuários (revogar tokens JWT em massa ou individualmente) em caso de suspeita de fraude ou comprometimento.
+Requisitos Funcionais (RF)
+Estes requisitos garantem que as necessidades de negócio mapeadas nos casos de uso sejam atendidas pela aplicação.
+RF01 - Catálogo de Produtos Estruturado: O sistema deve permitir o cadastro de produtos com variações múltiplas (SKUs) baseadas em atributos como tamanho do quadro e cor, mantendo controle de estoque individual para cada variação.
+RF02 - Especificações Técnicas e Geometria: O sistema deve possuir campos dedicados para exibir tabelas de geometria das bicicletas e especificações de componentes (grupo, suspensão, freios) na página de detalhes do produto.
+RF03 - Cálculo de Frete Volumétrico: O sistema deve integrar-se com APIs de transportadoras para calcular o frete dinamicamente via CEP, aplicando regras de cubagem e peso volumétrico específicas para caixas de bicicletas montadas ou semimontadas.
+RF04 - Transição de Carrinho (Guest para Logado): O sistema deve persistir os itens do carrinho de um usuário visitante e mesclá-los automaticamente com o carrinho vinculado à sua conta assim que o login ou cadastro for realizado.
+RF05 - Motor de Busca e Filtros: O sistema deve fornecer busca por texto livre e filtros facetados (preço, modalidade, tamanho, marca), atualizando os resultados dinamicamente.
+RF06 - Integração de Pagamentos: O sistema deve processar pagamentos via PIX, boleto e cartão de crédito através de integração com um gateway de pagamento externo, manipulando webhooks para atualização automática de status.
+RF07 - Máquina de Estados de Pedido: O sistema deve gerenciar o ciclo de vida do pedido através de status estritos (Ex: Pendente -> Pago -> Faturado -> Em Separação -> Enviado -> Entregue), enviando e-mails transacionais a cada mudança.
+RF08 - Controle de Acesso Baseado em Perfis (RBAC): O sistema deve restringir o acesso a rotas da API e telas do backoffice com base na role do usuário autenticado (Cliente, Admin de Negócio, Admin de TI).
+RF09 - Motor de Promoções: O sistema deve permitir a criação de cupons de desconto com regras de validação aplicáveis por período, valor mínimo de carrinho ou categorias de produtos específicas.
+RF10 - Histórico e Auditoria: O sistema deve registrar um log imutável de ações críticas administrativas (alterações de preço, atualizações manuais de estoque, estornos de pagamento) com data, hora e ID do usuário.
+🛡️ Requisitos Não Funcionais (RNF)
+Estes são os critérios de qualidade e restrições arquiteturais que garantem que o sistema seja robusto, seguro e escalável.
+RNF01 - Performance e Tempo de Resposta: As páginas de listagem e detalhes de produtos devem carregar e estar interativas (TTI - Time to Interactive) em menos de 2 segundos sob carga normal, utilizando estratégias de cache (ex: Redis ou CDN).
+RNF02 - Escalabilidade Elástica: O sistema deve ser capaz de escalar horizontalmente para suportar picos de tráfego (como Black Friday ou lançamentos de modelos muito aguardados) sem degradação de performance.
+RNF03 - Segurança de Dados de Pagamento: O sistema não deve armazenar dados sensíveis de cartão de crédito (PAN, CVV) no banco de dados próprio, operando sob conformidade com o padrão PCI DSS (usando tokenização fornecida pelo gateway).
+RNF04 - Disponibilidade e Resiliência (SLA): A infraestrutura deve ser desenhada para garantir uma disponibilidade de 99,9% (uptime), com mecanismos de retry em caso de falha temporária de comunicação com APIs externas (ex: transportadoras).
+RNF05 - Proteção contra Abusos: As APIs públicas de login, cadastro e simulação de frete devem possuir Rate Limiting (limite de requisições por IP) para mitigar ataques de força bruta ou varredura de dados (scraping).
+RNF06 - Acessibilidade e Responsividade: O front-end da loja deve seguir as diretrizes WCAG 2.1 (nível AA) e ser Mobile-First, garantindo que a jornada de compra seja perfeita em smartphones, considerando que a maioria do tráfego B2C vem do mobile.
+RNF07 - Segurança de Autenticação: A comunicação entre o client e a API deve ocorrer estritamente sobre HTTPS/TLS 1.3, e a autenticação deve utilizar tokens seguros (como JWT de curta duração combinados com Refresh Tokens em cookies HttpOnly).
+RNF08 - Armazenamento de Mídia: As imagens dos produtos (frequentemente pesadas e em alta resolução para visualização de detalhes das bicicletas) devem ser armazenadas em um serviço de Object Storage (como AWS S3) e servidas através de uma CDN com compressão automática (WebP).
