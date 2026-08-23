@@ -227,38 +227,84 @@ Dividida em dois sub-blocos (mesmo racional da Fase 3): 4A entrega a base de "mi
 
 **Independent Test**: Administrador cria produto, ajusta estoque, atualiza status de pedido e cria cupom de desconto (cenário 3 de `quickstart.md`).
 
-### Tests for User Story 3 ⚠️
+Dividida em três sub-blocos (mesmo racional das Fases 3 e 4): 5A entrega a gestão de catálogo (produtos/estoque), 5B a operação do dia a dia (pedidos/cupons, integrado ao checkout), 5C fecha com governança (clientes/auditoria/moderação), guardas de RBAC no frontend e o E2E completo do backoffice.
 
-- [ ] T067 [P] [US3] Teste de contrato para CRUD `/admin/products` e `PATCH /admin/products/{sku}/stock` em `backend/src/test/java/com/bikeshop/admin/ProductAdminContractTest.java`
+### Sub-bloco 5A — Produtos e Estoque
+
+**Goal**: Administrador cadastra/edita produtos e variações, e ajusta estoque manualmente com reflexo imediato no catálogo.
+
+**Independent Test**: Logado como `ADMIN`/`OPERATOR`, criar um produto com duas variações e ajustar o estoque de uma delas, confirmando o reflexo na disponibilidade exibida no catálogo público.
+
+**Depende de**: User Story 1 completa (catálogo, `VariacaoProduto`). **Pré-requisito**: hoje não existe forma de criar um cliente com papel `ADMIN`/`OPERATOR` (todo cadastro via `/auth/register` vira `CUSTOMER`) — resolvido aqui com um seed/mecanismo mínimo de usuário administrativo.
+
+#### Tests
+
+- [X] T067 [P] [US3] Teste de contrato para CRUD `/admin/products` e `PATCH /admin/products/{sku}/stock` em `backend/src/test/java/com/bikeshop/admin/ProductAdminContractTest.java`
+
+#### Implementation
+
+- [X] T073 [US3] Implementar `ProductAdminService` (CRUD de produto/variação) em `backend/src/main/java/com/bikeshop/admin/ProductAdminService.java` (depende de T025, T026 da US1) — inclui `GET /admin/products` e `GET /admin/products/{id}` (leitura, necessária para a UI listar/editar; não estava explícita na tabela de contratos)
+- [X] T074 [US3] Implementar endpoints `/admin/products` com guarda RBAC em `backend/src/main/java/com/bikeshop/admin/ProductAdminController.java` (depende de T073, T009)
+- [X] T075 [US3] Implementar `PATCH /admin/products/{sku}/stock` com publicação de evento de estoque em `backend/src/main/java/com/bikeshop/admin/StockAdminController.java` (depende de T073, T012)
+- [X] T082 [P] [US3] Construir UI de gestão de produtos/variações em `frontend/src/app/admin/products/` (caminho real sem route group — `(admin)/products` colidiria com `(shop)/products`, ambos resolvendo para `/products`)
+- [X] T083 [P] [US3] Construir UI de ajuste de estoque em `frontend/src/app/admin/inventory/` (mesmo motivo do caminho real acima)
+
+**Checkpoint 5A**: ✅ Atingido e validado (testes automatizados + navegador) em 2026-08-23. CRUD de produto/variação, ajuste manual de estoque e inativação (soft delete, some do catálogo público) funcionando ponta a ponta; RBAC confirmada nos dois lados (backend 403 para CUSTOMER, frontend redireciona visitante/não-admin). Pré-requisito resolvido: `AdminUserSeeder` cria um usuário ADMIN de desenvolvimento no primeiro start.
+
+---
+
+### Sub-bloco 5B — Pedidos e Cupons
+
+**Goal**: Administrador atualiza status/documentos de envio de pedidos e gerencia cupons de desconto, aplicáveis no checkout do cliente.
+
+**Independent Test**: Logado como `ADMIN`/`OPERATOR`, alterar o status de um pedido existente e criar um cupom; como cliente, aplicar o cupom no checkout e confirmar rejeição de um cupom expirado (edge case da spec).
+
+**Depende de**: Sub-bloco 5A completo (papel administrativo já disponível).
+
+#### Tests
+
 - [ ] T068 [P] [US3] Teste de contrato para `GET/PATCH /admin/orders` em `backend/src/test/java/com/bikeshop/admin/OrderAdminContractTest.java`
 - [ ] T069 [P] [US3] Teste de contrato para CRUD `/admin/coupons` e validação de cupom em `backend/src/test/java/com/bikeshop/admin/CouponAdminContractTest.java`
+
+#### Implementation
+
+- [ ] T076 [US3] Implementar `GET/PATCH /admin/orders` (status, documentos de envio) em `backend/src/main/java/com/bikeshop/admin/OrderAdminController.java` (depende de T035 da US1)
+- [ ] T077 [P] [US3] Criar entidade/repositório `CupomDesconto` em `backend/src/main/java/com/bikeshop/admin/CupomDesconto.java`
+- [ ] T078 [US3] Implementar `CouponService` (validação de validade/valor mínimo/categoria, edge case de cupom expirado) em `backend/src/main/java/com/bikeshop/checkout/CouponService.java` (depende de T077)
+- [ ] T079 [US3] Implementar endpoints `/admin/coupons` e `POST /checkout/coupon` em `backend/src/main/java/com/bikeshop/admin/CouponAdminController.java` (depende de T078)
+- [ ] T079b [US3] Integrar validação/aplicação de cupom ao fluxo de checkout `POST /checkout/orders` em `backend/src/main/java/com/bikeshop/checkout/CheckoutController.java`, conectando ao `CouponService` (depende de T078, T079, T038 da US1)
+- [ ] T084 [P] [US3] Construir UI de gestão de pedidos em `frontend/src/app/(admin)/orders/`
+- [ ] T085 [P] [US3] Construir UI de gestão de cupons em `frontend/src/app/(admin)/coupons/`
+
+**Checkpoint 5B**: pedidos administráveis (status/envio) e cupons de desconto funcionando ponta a ponta (criação no backoffice + aplicação no checkout), demonstrável e testável isoladamente.
+
+---
+
+### Sub-bloco 5C — Clientes, Auditoria, Moderação e Fechamento do Backoffice
+
+**Goal**: Administrador consulta/bloqueia clientes, audita ações sensíveis e modera avaliações; frontend aplica guardas de RBAC nas rotas administrativas; E2E cobre o cenário 3 completo.
+
+**Independent Test**: Cenário 3 completo de `quickstart.md` (produto → estoque → pedido → cupom, todas as ações gerando entrada no Log de Auditoria), validado via E2E.
+
+**Depende de**: Sub-blocos 5A e 5B completos.
+
+#### Tests
+
 - [ ] T070 [P] [US3] Teste de contrato para `GET /admin/audit-logs` em `backend/src/test/java/com/bikeshop/admin/AuditLogContractTest.java`
 - [ ] T070b [P] [US3] Teste de contrato para `GET /admin/customers` e `PATCH /admin/customers/{id}/status` em `backend/src/test/java/com/bikeshop/admin/CustomerAdminContractTest.java`
 - [ ] T070c [P] [US3] Teste de contrato para `PATCH /admin/reviews/{id}` (moderação de avaliações, FR-009) em `backend/src/test/java/com/bikeshop/admin/ReviewModerationContractTest.java`
 - [ ] T071 [US3] Teste de integração E2E (Playwright) criação de produto, ajuste de estoque, atualização de pedido e criação de cupom em `frontend/tests/e2e/admin-backoffice.spec.ts`
 - [ ] T072 [US3] Checks de privacidade, RBAC, acessibilidade e observabilidade da história
 
-### Implementation for User Story 3
+#### Implementation
 
-- [ ] T073 [US3] Implementar `ProductAdminService` (CRUD de produto/variação) em `backend/src/main/java/com/bikeshop/admin/ProductAdminService.java` (depende de T025, T026 da US1)
-- [ ] T074 [US3] Implementar endpoints `/admin/products` com guarda RBAC em `backend/src/main/java/com/bikeshop/admin/ProductAdminController.java` (depende de T073, T009)
-- [ ] T075 [US3] Implementar `PATCH /admin/products/{sku}/stock` com publicação de evento de estoque em `backend/src/main/java/com/bikeshop/admin/StockAdminController.java` (depende de T073, T012)
-- [ ] T076 [US3] Implementar `GET/PATCH /admin/orders` (status, documentos de envio) em `backend/src/main/java/com/bikeshop/admin/OrderAdminController.java` (depende de T035 da US1)
-- [ ] T077 [P] [US3] Criar entidade/repositório `CupomDesconto` em `backend/src/main/java/com/bikeshop/admin/CupomDesconto.java`
-- [ ] T078 [US3] Implementar `CouponService` (validação de validade/valor mínimo/categoria, edge case de cupom expirado) em `backend/src/main/java/com/bikeshop/checkout/CouponService.java` (depende de T077)
-- [ ] T079 [US3] Implementar endpoints `/admin/coupons` e `POST /checkout/coupon` em `backend/src/main/java/com/bikeshop/admin/CouponAdminController.java` (depende de T078)
-- [ ] T079b [US3] Integrar validação/aplicação de cupom ao fluxo de checkout `POST /checkout/orders` em `backend/src/main/java/com/bikeshop/checkout/CheckoutController.java`, conectando ao `CouponService` (depende de T078, T079, T038 da US1)
 - [ ] T080 [US3] Implementar `GET /admin/customers` (listagem básica) e `PATCH /admin/customers/{id}/status` (bloquear/desbloquear cliente, sem editar dados pessoais sensíveis) em `backend/src/main/java/com/bikeshop/admin/CustomerAdminController.java`
 - [ ] T081 [US3] Implementar `GET /admin/audit-logs` em `backend/src/main/java/com/bikeshop/admin/AuditLogController.java` (depende de T015 da fundação)
 - [ ] T081b [US3] Implementar moderação de avaliações (`PATCH /admin/reviews/{id}` para aprovar/rejeitar, FR-009) em `backend/src/main/java/com/bikeshop/admin/ReviewModerationController.java` (depende de T058 da US2)
-- [ ] T082 [P] [US3] Construir UI de gestão de produtos/variações em `frontend/src/app/(admin)/products/`
-- [ ] T083 [P] [US3] Construir UI de ajuste de estoque em `frontend/src/app/(admin)/inventory/`
-- [ ] T084 [P] [US3] Construir UI de gestão de pedidos em `frontend/src/app/(admin)/orders/`
-- [ ] T085 [P] [US3] Construir UI de gestão de cupons em `frontend/src/app/(admin)/coupons/`
 - [ ] T086 [US3] Construir UI de visualização de log de auditoria em `frontend/src/app/(admin)/audit-logs/`
 - [ ] T087 [US3] Aplicar guardas de rota RBAC nas rotas administrativas do frontend em `frontend/src/features/admin/guards.ts` (depende de T082–T086)
 
-**Checkpoint**: Todas as user stories funcionando de forma independente
+**Checkpoint 5C**: ✅ (ao concluir) Todas as user stories funcionando de forma independente — backoffice completo.
 
 ---
 

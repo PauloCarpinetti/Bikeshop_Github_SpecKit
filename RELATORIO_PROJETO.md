@@ -196,6 +196,22 @@ Validado com testes automatizados (2 novos — `PostSaleContractTest` — 20 no 
 
 ---
 
+## Sessão 2026-08-23 (continuação) — Sub-bloco 5A (Produtos e Estoque)
+
+Implementadas as 6 tarefas do sub-bloco 5A, abrindo a Fase 5 (backoffice, dividida em 5A/5B/5C, mesmo racional das Fases 3 e 4):
+
+**Backend**: `ProductAdminService` — CRUD de produto/variação (slug gerado automaticamente a partir do nome, com desambiguação), soft delete (inativa em vez de apagar, preservando o histórico de pedidos que referenciam o produto) e reindexação automática no Meilisearch a cada mutação (remove do índice quando inativado ou sem variação ativa — FR-001). `ProductAdminController` (`GET/POST/PUT/DELETE /admin/products`, `POST/PUT .../variants`) e `StockAdminController` (`PATCH /admin/products/{sku}/stock`, publica o mesmo evento `inventory.adjusted` usado pelo checkout). `AdminUserSeeder` cria um usuário `ADMIN` de desenvolvimento no primeiro start (pré-requisito: não havia forma de criar um usuário administrativo até aqui).
+
+**Frontend**: `/admin/products` (listar, criar, editar produto e variações) e `/admin/inventory` (ajuste de estoque por SKU com motivo); `useRequireAdmin` protege as duas páginas no cliente (o backend já recusa via RBAC independentemente). Header ganhou o link "Backoffice" para quem é `ADMIN`/`OPERATOR`.
+
+**Bugs reais encontrados e corrigidos**:
+1. **Colisão de rota** — `(admin)/products` e `(admin)/inventory` foram inicialmente criados como route groups (parênteses não entram na URL), mas isso colidiria com `(shop)/products` já existente, ambos resolvendo para `/products`. Corrigido usando um segmento real (`app/admin/products/`, `app/admin/inventory/`) antes mesmo de compilar.
+2. **Mutadores `package-private` inacessíveis** — os métodos de atualização adicionados a `Produto`/`VariacaoProduto` seguiram o padrão já usado em `Pedido`/`Cliente` (visibilidade de pacote), mas `ProductAdminService` vive num pacote (`admin`) diferente de `catalog` — corrigido tornando-os `public`, já que agora há um chamador legítimo fora do pacote.
+
+Validado com testes automatizados (2 novos — `ProductAdminContractTest` — 22 no total) e navegador: produto criado (com slug automático) aparecendo no catálogo público, edição refletida, variação adicionada e editada, estoque ajustado (+7, refletido no catálogo), produto inativado sumindo da busca pública, e acesso negado tanto para visitante (frontend redireciona ao login) quanto para cliente comum (backend 403).
+
+---
+
 ## Estado atual do projeto
 
 | Item | Status |
@@ -203,7 +219,7 @@ Validado com testes automatizados (2 novos — `PostSaleContractTest` — 20 no 
 | Constituição | ✅ Definida |
 | Especificação (spec.md) | ✅ Completa, revisada e corrigida |
 | Plano técnico (plan.md + research/data-model/quickstart/contracts) | ✅ Completo |
-| Backlog de tarefas (tasks.md) | ✅ 101 tarefas, consistência validada — **66 concluídas** |
+| Backlog de tarefas (tasks.md) | ✅ 101 tarefas, consistência validada — **72 concluídas** |
 | Fase 1 — Setup | ✅ Implementada e validada |
 | Fase 2 — Foundational | ✅ Implementada e validada |
 | Fase 3A — Catálogo e Carrinho | ✅ Implementada e validada |
@@ -211,7 +227,9 @@ Validado com testes automatizados (2 novos — `PostSaleContractTest` — 20 no 
 | Fase 3C — Autenticação e fechamento do MVP | ✅ Implementada e validada (**MVP / User Story 1 completo**) |
 | Fase 4A — Perfil, Endereços e Histórico de Pedidos | ✅ Implementada e validada |
 | Fase 4B — Avaliações, Trocas/Devoluções e Notificação de Status | ✅ Implementada e validada (**User Story 2 completa**) |
-| Fase 5 — User Story 3 (backoffice) | ⏳ Não iniciada |
+| Fase 5A — Produtos e Estoque | ✅ Implementada e validada |
+| Fase 5B — Pedidos e Cupons | ⏳ Não iniciada |
+| Fase 5C — Clientes, Auditoria, Moderação e Fechamento | ⏳ Não iniciada |
 | Fase 6 — Polish | ⏳ Não iniciada |
 
 ## URLs de desenvolvimento local (atuais)
@@ -231,9 +249,9 @@ Validado com testes automatizados (2 novos — `PostSaleContractTest` — 20 no 
 - Obter usuário/senha da API oficial dos Correios (`CORREIOS_API_USUARIO`/`CORREIOS_API_SENHA`) — hoje o frete usa uma estimativa local por peso cubado
 - Obter uma API key do **SendGrid** (`SENDGRID_API_KEY`) para envio real do e-mail de confirmação de pedido — hoje o envio é simulado (apenas logado)
 
-### 2. Fase 5 — Backoffice (User Story 3)
+### 2. Sub-blocos 5B e 5C — Fecham o Backoffice (User Story 3)
 
-CRUD de produtos/variações, ajuste de estoque, gestão de pedidos (inclui levar um pedido a `ENTREGUE`, hoje só possível via SQL direto — vai destravar o teste E2E completo de pós-venda da Fase 4B), cupons de desconto, moderação de avaliações e log de auditoria — já detalhada em `tasks.md`.
+5B: gestão de pedidos (inclui levar um pedido a `ENTREGUE`, hoje só possível via SQL direto — vai destravar o teste E2E completo de pós-venda da Fase 4B) e cupons de desconto, integrados ao checkout. 5C: clientes (bloqueio), log de auditoria, moderação de avaliações, guardas de RBAC formais no frontend e o E2E completo do backoffice — já detalhados em `tasks.md`.
 
 ### 3. Fase 6 — Polish
 
@@ -241,4 +259,4 @@ Dashboards de observabilidade, logs centralizados, auditoria de acessibilidade, 
 
 ## Resumo executivo
 
-O MVP (User Story 1) e a conta do cliente/pós-venda (User Story 2) estão completos: catálogo com busca, carrinho, checkout com pagamento e frete (simulados, prontos para credenciais reais), autenticação com merge de carrinho, perfil/endereços, histórico de pedidos com rastreamento, avaliações de produto e solicitação de troca/devolução com auditoria e notificação de status — tudo testado via testes automatizados e navegador. Resta o backoffice (User Story 3) e os itens de polimento — já detalhados em `tasks.md`.
+O MVP (User Story 1) e a conta do cliente/pós-venda (User Story 2) estão completos, e o backoffice (User Story 3) começou: catálogo com busca, carrinho, checkout com pagamento e frete (simulados, prontos para credenciais reais), autenticação com merge de carrinho, perfil/endereços, histórico de pedidos com rastreamento, avaliações de produto, solicitação de troca/devolução com auditoria e notificação de status, e agora gestão administrativa de produtos/estoque — tudo testado via testes automatizados e navegador. Restam pedidos/cupons e clientes/auditoria/moderação no backoffice, e os itens de polimento — já detalhados em `tasks.md`.
