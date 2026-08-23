@@ -26,7 +26,8 @@ export function Header() {
         <div className="flex items-center gap-3">
           {cliente ? (
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-gray-600">Olá, {cliente.nome.split(" ")[0]}</span>
+              <Link href="/profile" className="text-gray-600 hover:underline">Olá, {cliente.nome.split(" ")[0]}</Link>
+              <Link href="/orders" className="text-gray-500 hover:underline">Meus pedidos</Link>
               <button onClick={handleLogout} className="text-gray-500 underline hover:text-gray-900">
                 Sair
               </button>

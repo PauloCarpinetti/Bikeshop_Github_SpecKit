@@ -1,6 +1,8 @@
 package com.bikeshop.orders.dto;
 
+import com.bikeshop.orders.EnderecoEntregaInput;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 public record OrderDto(
@@ -14,6 +16,9 @@ public record OrderDto(
         String paymentProvider,
         String paymentReference,
         String paymentStatus,
+        Instant criadoEm,
+        List<OrderStatusHistoryEntryDto> statusHistorico,
+        EnderecoEntregaInput enderecoEntrega,
         List<OrderItemDto> itens
 ) {
 }

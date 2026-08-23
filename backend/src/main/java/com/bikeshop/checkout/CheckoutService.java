@@ -66,7 +66,7 @@ public class CheckoutService {
         return new ShippingQuoteResponseDto(quote.transportadora(), quote.valor(), quote.prazoDias(), quote.estimado());
     }
 
-    public CheckoutResultDto criarPedido(String cartId, CreateOrderRequest request) {
+    public CheckoutResultDto criarPedido(String cartId, CreateOrderRequest request, Long clienteId) {
         CartViewDto cart = requireNonEmptyCart(cartId);
         log.info("Iniciando checkout: cartId={} itens={} paymentProvider={}",
                 cartId, cart.itens().size(), request.paymentProvider());
@@ -89,7 +89,7 @@ public class CheckoutService {
                         item.precoUnitario(), item.quantidade()))
                 .toList();
 
-        Pedido pedido = orderService.criarPedido(cartId, request.clienteNome(), request.clienteEmail(),
+        Pedido pedido = orderService.criarPedido(cartId, clienteId, request.clienteNome(), request.clienteEmail(),
                 request.endereco(), itensPedido, frete);
 
         PaymentGatewayAdapter adapter = paymentGatewayResolver.resolve(request.paymentProvider());

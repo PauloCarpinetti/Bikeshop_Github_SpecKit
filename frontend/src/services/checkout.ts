@@ -32,6 +32,11 @@ export const orderItemSchema = z.object({
   subtotal: z.number(),
 });
 
+export const orderStatusHistoryEntrySchema = z.object({
+  status: z.string(),
+  timestamp: z.string(),
+});
+
 export const orderSchema = z.object({
   id: z.number(),
   status: z.string(),
@@ -43,6 +48,9 @@ export const orderSchema = z.object({
   paymentProvider: z.string().nullable(),
   paymentReference: z.string().nullable(),
   paymentStatus: z.string().nullable(),
+  criadoEm: z.string(),
+  statusHistorico: z.array(orderStatusHistoryEntrySchema),
+  enderecoEntrega: enderecoEntregaSchema.nullable(),
   itens: z.array(orderItemSchema),
 });
 

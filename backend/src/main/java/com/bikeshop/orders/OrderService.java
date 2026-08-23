@@ -5,6 +5,7 @@ import com.bikeshop.common.exception.BusinessException;
 import com.bikeshop.common.exception.NotFoundException;
 import com.bikeshop.orders.dto.OrderDto;
 import com.bikeshop.orders.dto.OrderItemDto;
+import com.bikeshop.orders.dto.OrderStatusHistoryEntryDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -35,8 +36,8 @@ public class OrderService {
         this.objectMapper = objectMapper;
     }
 
-    public Pedido criarPedido(String cartId, String clienteNome, String clienteEmail, EnderecoEntregaInput endereco,
-                               List<OrderLineItemInput> itens, ShippingQuote frete) {
+    public Pedido criarPedido(String cartId, Long clienteId, String clienteNome, String clienteEmail,
+                               EnderecoEntregaInput endereco, List<OrderLineItemInput> itens, ShippingQuote frete) {
         if (itens.isEmpty()) {
             throw new BusinessException("CARRINHO_VAZIO", "Não é possível criar um pedido sem itens", HttpStatus.BAD_REQUEST);
         }
@@ -46,7 +47,7 @@ public class OrderService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Pedido pedido = new Pedido(
-                cartId, null, clienteNome, clienteEmail,
+                cartId, clienteId, clienteNome, clienteEmail,
                 toJson(endereco),
                 valorItens, frete.valor(), frete.transportadora(), frete.prazoDias(),
                 historicoInicial()
@@ -91,8 +92,30 @@ public class OrderService {
         return new OrderDto(
                 pedido.getId(), pedido.getStatus().name(), pedido.getValorItens(), pedido.getValorFrete(),
                 pedido.getValorTotal(), pedido.getTransportadora(), pedido.getPrazoFreteDias(),
-                pedido.getPaymentProvider(), pedido.getPaymentReference(), pedido.getPaymentStatus(), itens
+                pedido.getPaymentProvider(), pedido.getPaymentReference(), pedido.getPaymentStatus(),
+                pedido.getCriadoEm(), toStatusHistorico(pedido.getStatusHistorico()),
+                toEndereco(pedido.getEnderecoEntrega()), itens
         );
+    }
+
+    private List<OrderStatusHistoryEntryDto> toStatusHistorico(String statusHistoricoJson) {
+        try {
+            ArrayNode array = (ArrayNode) objectMapper.readTree(statusHistoricoJson);
+            List<OrderStatusHistoryEntryDto> historico = new java.util.ArrayList<>();
+            array.forEach(node -> historico.add(new OrderStatusHistoryEntryDto(
+                    node.get("status").asText(), Instant.parse(node.get("timestamp").asText()))));
+            return historico;
+        } catch (Exception ex) {
+            return List.of();
+        }
+    }
+
+    private EnderecoEntregaInput toEndereco(String enderecoJson) {
+        try {
+            return objectMapper.readValue(enderecoJson, EnderecoEntregaInput.class);
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     private void validarTransicao(PedidoStatus atual, PedidoStatus novo) {

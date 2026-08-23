@@ -9,6 +9,8 @@ import com.bikeshop.common.exception.BusinessException;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -43,9 +45,10 @@ public class CheckoutController {
     public CheckoutResultDto criarPedido(
             @CookieValue(name = CartCookieResolver.CART_COOKIE, required = false) String cartId,
             HttpServletResponse response,
-            @Valid @RequestBody CreateOrderRequest request) {
+            @Valid @RequestBody CreateOrderRequest request,
+            Authentication authentication) {
         String resolvedCartId = requireExistingCart(cartId, response);
-        return checkoutService.criarPedido(resolvedCartId, request);
+        return checkoutService.criarPedido(resolvedCartId, request, resolveClienteId(authentication));
     }
 
     /** Frete/checkout exigem um carrinho já existente — diferente do CartController, não cria um novo aqui. */
@@ -54,5 +57,13 @@ public class CheckoutController {
             throw new BusinessException("CARRINHO_VAZIO", "Nenhum carrinho encontrado. Adicione itens antes de continuar.", HttpStatus.BAD_REQUEST);
         }
         return cartCookieResolver.resolve(cartId, response);
+    }
+
+    /** Checkout é público (guest checkout) — o cliente_id só é vinculado ao pedido se houver JWT válido (T056). */
+    private Long resolveClienteId(Authentication authentication) {
+        if (authentication == null || authentication instanceof AnonymousAuthenticationToken) {
+            return null;
+        }
+        return Long.valueOf(authentication.getName());
     }
 }

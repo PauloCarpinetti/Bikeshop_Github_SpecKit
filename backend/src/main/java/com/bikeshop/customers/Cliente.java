@@ -31,6 +31,9 @@ public class Cliente {
     @Column(name = "senha_hash", nullable = false)
     private String senhaHash;
 
+    @Column
+    private String telefone;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role = Role.CUSTOMER;
@@ -65,11 +68,27 @@ public class Cliente {
         return senhaHash;
     }
 
+    public String getTelefone() {
+        return telefone;
+    }
+
     public Role getRole() {
         return role;
     }
 
     public Instant getCriadoEm() {
         return criadoEm;
+    }
+
+    void updateNome(String nome) {
+        this.nome = nome;
+    }
+
+    void updateTelefone(String telefone) {
+        this.telefone = telefone;
+    }
+
+    void updateSenhaHash(String senhaHash) {
+        this.senhaHash = senhaHash;
     }
 }
