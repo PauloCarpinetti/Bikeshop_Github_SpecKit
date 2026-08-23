@@ -51,8 +51,8 @@ public class CatalogDataSeeder implements CommandLineRunner {
                 Map.of("standover", "780mm", "reach", "430mm", "stack", "600mm"),
                 List.of("https://placehold.co/600x400?text=Explorer+MTB"),
                 List.of(
-                        variant("EXP-MTB-M-PRETO", Map.of("tamanho", "M", "cor", "Preto"), new BigDecimal("3299.90"), 8),
-                        variant("EXP-MTB-G-AZUL", Map.of("tamanho", "G", "cor", "Azul"), new BigDecimal("3299.90"), 5)
+                        bikeVariant("EXP-MTB-M-PRETO", Map.of("tamanho", "M", "cor", "Preto"), new BigDecimal("3299.90"), 8),
+                        bikeVariant("EXP-MTB-G-AZUL", Map.of("tamanho", "G", "cor", "Azul"), new BigDecimal("3299.90"), 5)
                 )
         );
 
@@ -65,8 +65,8 @@ public class CatalogDataSeeder implements CommandLineRunner {
                 Map.of("standover", "760mm", "reach", "410mm", "stack", "560mm"),
                 List.of("https://placehold.co/600x400?text=Veloce+Speed"),
                 List.of(
-                        variant("VEL-SPD-M-VERMELHO", Map.of("tamanho", "M", "cor", "Vermelho"), new BigDecimal("6499.00"), 4),
-                        variant("VEL-SPD-P-PRETO", Map.of("tamanho", "P", "cor", "Preto"), new BigDecimal("6499.00"), 3)
+                        bikeVariant("VEL-SPD-M-VERMELHO", Map.of("tamanho", "M", "cor", "Vermelho"), new BigDecimal("6499.00"), 4),
+                        bikeVariant("VEL-SPD-P-PRETO", Map.of("tamanho", "P", "cor", "Preto"), new BigDecimal("6499.00"), 3)
                 )
         );
 
@@ -79,7 +79,7 @@ public class CatalogDataSeeder implements CommandLineRunner {
                 Map.of("standover", "740mm", "reach", "400mm", "stack", "620mm"),
                 List.of("https://placehold.co/600x400?text=CityRide+Urbana"),
                 List.of(
-                        variant("CR-URB-U-BRANCO", Map.of("tamanho", "Único", "cor", "Branco"), new BigDecimal("1599.90"), 12)
+                        bikeVariant("CR-URB-U-BRANCO", Map.of("tamanho", "Único", "cor", "Branco"), new BigDecimal("1599.90"), 12)
                 )
         );
 
@@ -92,19 +92,28 @@ public class CatalogDataSeeder implements CommandLineRunner {
                 Map.of(),
                 List.of("https://placehold.co/600x400?text=Capacete+ProSafe"),
                 List.of(
-                        variant("PS-CAP-M-PRETO", Map.of("tamanho", "M", "cor", "Preto"), new BigDecimal("249.90"), 20),
-                        variant("PS-CAP-G-PRETO", Map.of("tamanho", "G", "cor", "Preto"), new BigDecimal("249.90"), 15)
+                        accessoryVariant("PS-CAP-M-PRETO", Map.of("tamanho", "M", "cor", "Preto"), new BigDecimal("249.90"), 20),
+                        accessoryVariant("PS-CAP-G-PRETO", Map.of("tamanho", "G", "cor", "Preto"), new BigDecimal("249.90"), 15)
                 )
         );
 
         log.info("Seed de catálogo concluído (produtos de exemplo criados e indexados no Meilisearch).");
     }
 
-    private record VariantSeed(String sku, Map<String, Object> atributos, BigDecimal preco, int estoque) {
+    private record VariantSeed(String sku, Map<String, Object> atributos, BigDecimal preco, int estoque,
+                                BigDecimal pesoKg, BigDecimal alturaCm, BigDecimal larguraCm, BigDecimal comprimentoCm) {
     }
 
-    private VariantSeed variant(String sku, Map<String, Object> atributos, BigDecimal preco, int estoque) {
-        return new VariantSeed(sku, atributos, preco, estoque);
+    /** Bicicleta desmontada em caixa: ~14kg, caixa grande (padrão de transporte). */
+    private VariantSeed bikeVariant(String sku, Map<String, Object> atributos, BigDecimal preco, int estoque) {
+        return new VariantSeed(sku, atributos, preco, estoque,
+                new BigDecimal("14.000"), new BigDecimal("25.00"), new BigDecimal("80.00"), new BigDecimal("135.00"));
+    }
+
+    /** Acessório leve (ex.: capacete): caixa pequena. */
+    private VariantSeed accessoryVariant(String sku, Map<String, Object> atributos, BigDecimal preco, int estoque) {
+        return new VariantSeed(sku, atributos, preco, estoque,
+                new BigDecimal("0.500"), new BigDecimal("20.00"), new BigDecimal("25.00"), new BigDecimal("30.00"));
     }
 
     private void seedProduct(String nome, String slug, String descricao, String categoria, String marca,
@@ -120,7 +129,8 @@ public class CatalogDataSeeder implements CommandLineRunner {
 
         List<VariacaoProduto> salvas = new java.util.ArrayList<>();
         for (VariantSeed v : variantes) {
-            VariacaoProduto variacao = new VariacaoProduto(produto, v.sku(), objectMapper.writeValueAsString(v.atributos()), v.preco(), v.estoque());
+            VariacaoProduto variacao = new VariacaoProduto(produto, v.sku(), objectMapper.writeValueAsString(v.atributos()),
+                    v.preco(), v.estoque(), v.pesoKg(), v.alturaCm(), v.larguraCm(), v.comprimentoCm());
             salvas.add(variacaoProdutoRepository.save(variacao));
         }
 

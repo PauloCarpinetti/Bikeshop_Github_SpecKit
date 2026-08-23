@@ -1,0 +1,140 @@
+package com.bikeshop.orders;
+
+import com.bikeshop.checkout.shipping.ShippingQuote;
+import com.bikeshop.common.exception.BusinessException;
+import com.bikeshop.common.exception.NotFoundException;
+import com.bikeshop.orders.dto.OrderDto;
+import com.bikeshop.orders.dto.OrderItemDto;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.Set;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Criação de pedido a partir do carrinho e transições de status (FR-007). Preço de cada item é
+ * congelado no momento da criação (snapshot em {@link ItemPedido}, independente de mudanças
+ * futuras no preço da variação).
+ */
+@Service
+@Transactional
+public class OrderService {
+
+    private static final Set<PedidoStatus> STATUS_TERMINAIS = Set.of(PedidoStatus.ENTREGUE, PedidoStatus.CANCELADO);
+
+    private final OrderRepository orderRepository;
+    private final ObjectMapper objectMapper;
+
+    public OrderService(OrderRepository orderRepository, ObjectMapper objectMapper) {
+        this.orderRepository = orderRepository;
+        this.objectMapper = objectMapper;
+    }
+
+    public Pedido criarPedido(String cartId, String clienteNome, String clienteEmail, EnderecoEntregaInput endereco,
+                               List<OrderLineItemInput> itens, ShippingQuote frete) {
+        if (itens.isEmpty()) {
+            throw new BusinessException("CARRINHO_VAZIO", "Não é possível criar um pedido sem itens", HttpStatus.BAD_REQUEST);
+        }
+
+        BigDecimal valorItens = itens.stream()
+                .map(item -> item.precoUnitario().multiply(BigDecimal.valueOf(item.quantidade())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        Pedido pedido = new Pedido(
+                cartId, null, clienteNome, clienteEmail,
+                toJson(endereco),
+                valorItens, frete.valor(), frete.transportadora(), frete.prazoDias(),
+                historicoInicial()
+        );
+
+        for (OrderLineItemInput item : itens) {
+            pedido.addItem(new ItemPedido(pedido, item.variacaoProdutoId(), item.sku(), item.nomeProduto(),
+                    item.precoUnitario(), item.quantidade()));
+        }
+
+        return orderRepository.save(pedido);
+    }
+
+    public Pedido buscarPorId(Long id) {
+        return orderRepository.findById(id).orElseThrow(() -> new NotFoundException("Pedido", id));
+    }
+
+    public java.util.Optional<Pedido> findByPaymentReference(String paymentReference) {
+        return orderRepository.findByPaymentReference(paymentReference);
+    }
+
+    public Pedido atualizarStatus(Long pedidoId, PedidoStatus novoStatus) {
+        Pedido pedido = buscarPorId(pedidoId);
+        validarTransicao(pedido.getStatus(), novoStatus);
+        pedido.setStatus(novoStatus);
+        pedido.setStatusHistorico(comHistoricoAdicionado(pedido.getStatusHistorico(), novoStatus));
+        return pedido;
+    }
+
+    public Pedido registrarPagamento(Long pedidoId, String provider, String reference, String status) {
+        Pedido pedido = buscarPorId(pedidoId);
+        pedido.setPayment(provider, reference, status);
+        return pedido;
+    }
+
+    public OrderDto toDto(Pedido pedido) {
+        List<OrderItemDto> itens = pedido.getItens().stream()
+                .map(item -> new OrderItemDto(item.getVariacaoProdutoId(), item.getSku(), item.getNomeProduto(),
+                        item.getPrecoUnitario(), item.getQuantidade(), item.getSubtotal()))
+                .toList();
+
+        return new OrderDto(
+                pedido.getId(), pedido.getStatus().name(), pedido.getValorItens(), pedido.getValorFrete(),
+                pedido.getValorTotal(), pedido.getTransportadora(), pedido.getPrazoFreteDias(),
+                pedido.getPaymentProvider(), pedido.getPaymentReference(), pedido.getPaymentStatus(), itens
+        );
+    }
+
+    private void validarTransicao(PedidoStatus atual, PedidoStatus novo) {
+        if (STATUS_TERMINAIS.contains(atual)) {
+            throw new BusinessException(
+                    "TRANSICAO_INVALIDA",
+                    "Pedido em status terminal (%s) não pode mudar para %s".formatted(atual, novo),
+                    HttpStatus.CONFLICT
+            );
+        }
+    }
+
+    private String toJson(EnderecoEntregaInput endereco) {
+        try {
+            return objectMapper.writeValueAsString(endereco);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Falha ao serializar endereço de entrega", ex);
+        }
+    }
+
+    private String historicoInicial() {
+        ArrayNode array = objectMapper.createArrayNode();
+        array.add(historicoEntrada(PedidoStatus.CRIADO));
+        return array.toString();
+    }
+
+    private String comHistoricoAdicionado(String historicoAtualJson, PedidoStatus novoStatus) {
+        try {
+            ArrayNode array = (ArrayNode) objectMapper.readTree(historicoAtualJson);
+            array.add(historicoEntrada(novoStatus));
+            return array.toString();
+        } catch (Exception ex) {
+            ArrayNode array = objectMapper.createArrayNode();
+            array.add(historicoEntrada(novoStatus));
+            return array.toString();
+        }
+    }
+
+    private ObjectNode historicoEntrada(PedidoStatus status) {
+        ObjectNode node = objectMapper.createObjectNode();
+        node.put("status", status.name());
+        node.put("timestamp", Instant.now().toString());
+        return node;
+    }
+}

@@ -58,14 +58,16 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             auth ->
                 auth
-                    // Catálogo, carrinho de visitante, autenticação, documentação e webhooks são
-                    // públicos. Carrinho fica público nesta sub-fase (3A); a partir da 3C, o
-                    // carrinho autenticado passa a exigir JWT no merge pós-login.
+                    // Catálogo, carrinho, checkout/pagamento (guest checkout), autenticação,
+                    // documentação e webhooks são públicos nas sub-fases 3A/3B — não há login
+                    // ainda (chega na 3C). A partir da 3C, vale reavaliar quais destas rotas devem
+                    // exigir sessão autenticada (ex.: ownership do pedido em /payments/**).
                     .requestMatchers(
                         "/api/v1/catalog/**",
                         "/api/v1/cart/**",
+                        "/api/v1/checkout/**",
+                        "/api/v1/payments/**",
                         "/api/v1/auth/**",
-                        "/api/v1/payments/webhooks/**",
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html",
@@ -75,7 +77,7 @@ public class SecurityConfig {
                     // Backoffice exige papel operacional/administrativo (RBAC, Princípio III)
                     .requestMatchers("/api/v1/admin/**")
                     .hasAnyRole("OPERATOR", "ADMIN")
-                    // Demais rotas (checkout, conta) exigem autenticação
+                    // Demais rotas (conta autenticada) exigem autenticação
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
