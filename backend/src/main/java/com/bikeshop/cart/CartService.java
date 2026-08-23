@@ -16,8 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Regras de negócio do carrinho (FR-004). Nesta sub-fase (3A), trabalha exclusivamente com o
- * carrinho de visitante (Redis); merge para conta autenticada é implementado na sub-fase 3C.
+ * Regras de negócio do carrinho (FR-004): carrinho de visitante e carrinho autenticado, ambos no
+ * Redis — ver {@link #mergeIntoCustomerCart} para a mesclagem feita no login/cadastro (T040).
  *
  * <p>{@code @Transactional} mantém a sessão Hibernate aberta durante o enriquecimento do carrinho
  * com dados de {@code Produto}/{@code VariacaoProduto} (associação lazy), já que a aplicação roda
@@ -80,6 +80,42 @@ public class CartService {
         cart.removeItem(variacaoProdutoId);
         cartRepository.save(cart);
         return toView(cart);
+    }
+
+    /** Usado ao concluir o checkout (T038): o carrinho é esvaziado após o pedido ser criado. */
+    public void clear(String cartId) {
+        cartRepository.delete(cartId);
+    }
+
+    /**
+     * Mescla o carrinho de visitante (identificado pelo cookie da sessão) com o carrinho salvo do
+     * cliente (FR-004, T040). O carrinho do cliente é mantido sob uma chave estável
+     * ({@code customer:<clienteId>}) para sobreviver entre sessões/dispositivos; o carrinho da
+     * sessão atual (cookie) é atualizado com o resultado mesclado para a navegação continuar sem
+     * interrupção.
+     */
+    public CartViewDto mergeIntoCustomerCart(String cartId, Long clienteId) {
+        Carrinho visitorCart = cartRepository.findOrCreate(cartId);
+        Carrinho customerCart = cartRepository.findOrCreate(customerCartKey(clienteId));
+
+        for (ItemCarrinho item : visitorCart.getItens()) {
+            int quantidadeExistente = customerCart.findItem(item.getVariacaoProdutoId())
+                    .map(ItemCarrinho::getQuantidade).orElse(0);
+            customerCart.upsertItem(item.getVariacaoProdutoId(), quantidadeExistente + item.getQuantidade());
+        }
+        cartRepository.save(customerCart);
+
+        Carrinho mergedSessionCart = new Carrinho(cartId);
+        for (ItemCarrinho item : customerCart.getItens()) {
+            mergedSessionCart.upsertItem(item.getVariacaoProdutoId(), item.getQuantidade());
+        }
+        cartRepository.save(mergedSessionCart);
+
+        return toView(mergedSessionCart);
+    }
+
+    private String customerCartKey(Long clienteId) {
+        return "customer:" + clienteId;
     }
 
     private void validarEstoque(VariacaoProduto variacao, int quantidadeSolicitada) {

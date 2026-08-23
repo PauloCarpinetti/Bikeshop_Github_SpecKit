@@ -13,6 +13,8 @@ type CartContextValue = {
   addItem: (variacaoProdutoId: number, quantidade: number) => Promise<void>;
   updateItem: (variacaoProdutoId: number, quantidade: number) => Promise<void>;
   removeItem: (variacaoProdutoId: number) => Promise<void>;
+  /** Recarrega o carrinho do backend — usado após o checkout para refletir que ele foi esvaziado. */
+  refresh: () => Promise<void>;
 };
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
@@ -79,6 +81,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         addItem,
         updateItem,
         removeItem,
+        refresh,
       }}
     >
       {children}

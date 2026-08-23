@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCart } from "./CartContext";
 
 function formatPrice(value: number): string {
@@ -74,9 +75,13 @@ export function CartDrawer() {
               <span>Total</span>
               <span>{formatPrice(cart.total)}</span>
             </div>
-            <p className="mt-2 text-xs text-gray-500">
-              Frete e pagamento serão calculados no checkout (próxima etapa da implementação).
-            </p>
+            <p className="mt-1 text-xs text-gray-500">Frete calculado na próxima etapa.</p>
+            <Link
+              href="/checkout"
+              className="mt-3 block w-full rounded bg-gray-900 px-4 py-2 text-center text-sm font-medium text-white hover:bg-gray-700"
+            >
+              Finalizar compra
+            </Link>
           </div>
         )}
       </div>
