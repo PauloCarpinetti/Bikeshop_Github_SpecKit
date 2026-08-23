@@ -113,22 +113,22 @@ Para reduzir o tamanho de cada sessão de implementação, a Fase 3 é dividida 
 
 #### Tests
 
-- [ ] T021 [P] [US1] Teste de contrato para `POST /checkout/shipping-quote` em `backend/src/test/java/com/bikeshop/checkout/ShippingQuoteContractTest.java`
-- [ ] T022 [P] [US1] Teste de contrato para `POST /checkout/orders` e `POST /payments/{orderId}/intents` + webhook em `backend/src/test/java/com/bikeshop/checkout/CheckoutContractTest.java`
+- [X] T021 [P] [US1] Teste de contrato para `POST /checkout/shipping-quote` em `backend/src/test/java/com/bikeshop/checkout/ShippingQuoteContractTest.java`
+- [X] T022 [P] [US1] Teste de contrato para `POST /checkout/orders` e `POST /payments/{orderId}/intents` + webhook em `backend/src/test/java/com/bikeshop/checkout/CheckoutContractTest.java`
 
 #### Implementation
 
-- [ ] T032 [US1] Implementar `ShippingProvider` + `CorreiosShippingProvider` (API dos Correios, cubagem/peso volumétrico) em `backend/src/main/java/com/bikeshop/checkout/shipping/`
-- [ ] T033 [US1] Implementar endpoint `POST /checkout/shipping-quote` em `backend/src/main/java/com/bikeshop/checkout/CheckoutController.java` (depende de T032)
-- [ ] T034 [P] [US1] Criar entidades `Pedido`/`ItemPedido` (com ciclo de vida de status, FR-007) em `backend/src/main/java/com/bikeshop/orders/`
-- [ ] T035 [US1] Implementar `OrderService` (criação de pedido a partir do carrinho, transições de status) em `backend/src/main/java/com/bikeshop/orders/OrderService.java` (depende de T034, T030)
-- [ ] T036 [US1] Implementar adapters de pagamento (Stripe, Mercado Pago, PagSeguro) via Strategy em `backend/src/main/java/com/bikeshop/payments/`
-- [ ] T037 [US1] Implementar `POST /payments/{orderId}/intents` e `POST /payments/webhooks/{provider}` (idempotente) em `backend/src/main/java/com/bikeshop/payments/PaymentController.java` (depende de T036)
-- [ ] T038 [US1] Implementar orquestração `POST /checkout/orders` (frete + pagamento) em `backend/src/main/java/com/bikeshop/checkout/CheckoutController.java` (depende de T033, T035, T037) — aplicação de cupom fica fora do escopo do MVP e é integrada na Fase 5 (ver T079b)
-- [ ] T044 [US1] Construir fluxo de checkout (endereço, frete, pagamento) em `frontend/src/app/(shop)/checkout/` (depende de T041–T043)
-- [ ] T044b [US1] Implementar tela/mensagem de recuperação de checkout ao falhar o pagamento (nova tentativa, contato de suporte, SC-002) em `frontend/src/app/(shop)/checkout/recovery.tsx` (depende de T044, T038)
+- [X] T032 [US1] Implementar `ShippingProvider` + `CorreiosShippingProvider` (API dos Correios, cubagem/peso volumétrico) em `backend/src/main/java/com/bikeshop/checkout/shipping/`
+- [X] T033 [US1] Implementar endpoint `POST /checkout/shipping-quote` em `backend/src/main/java/com/bikeshop/checkout/CheckoutController.java` (depende de T032)
+- [X] T034 [P] [US1] Criar entidades `Pedido`/`ItemPedido` (com ciclo de vida de status, FR-007) em `backend/src/main/java/com/bikeshop/orders/`
+- [X] T035 [US1] Implementar `OrderService` (criação de pedido a partir do carrinho, transições de status) em `backend/src/main/java/com/bikeshop/orders/OrderService.java` (depende de T034, T030)
+- [X] T036 [US1] Implementar adapters de pagamento (Stripe, Mercado Pago, PagSeguro) via Strategy em `backend/src/main/java/com/bikeshop/payments/`
+- [X] T037 [US1] Implementar `POST /payments/{orderId}/intents` e `POST /payments/webhooks/{provider}` (idempotente) em `backend/src/main/java/com/bikeshop/payments/PaymentController.java` (depende de T036)
+- [X] T038 [US1] Implementar orquestração `POST /checkout/orders` (frete + pagamento) em `backend/src/main/java/com/bikeshop/checkout/CheckoutController.java` (depende de T033, T035, T037) — aplicação de cupom fica fora do escopo do MVP e é integrada na Fase 5 (ver T079b)
+- [X] T044 [US1] Construir fluxo de checkout (endereço, frete, pagamento) em `frontend/src/app/(shop)/checkout/page.tsx`, com resumo do carrinho e cálculo de frete (depende de T041–T043)
+- [X] T044b [US1] Implementar tela de recuperação de checkout em `frontend/src/app/(shop)/checkout/recovery/page.tsx` (rota própria — App Router exige `page.tsx` num diretório, por isso o caminho difere do `recovery.tsx` originalmente planejado) (depende de T044, T038)
 
-**Checkpoint 3B**: fluxo completo de compra (carrinho → frete → pagamento → pedido criado) funcionando com um cliente de teste/seed — ainda sem cadastro/login reais.
+**Checkpoint 3B**: ✅ Atingido e validado (testes automatizados + navegador) em 2026-08-21. Fluxo completo de compra (carrinho → frete real por peso/cubagem → pedido criado → pagamento simulado) funcionando com um cliente de teste/seed — ainda sem cadastro/login reais. Frete e pagamento reais (Correios/Stripe/Mercado Pago/PagSeguro) ficam pendentes de credenciais.
 
 ---
 
@@ -147,14 +147,14 @@ Para reduzir o tamanho de cada sessão de implementação, a Fase 3 é dividida 
 
 #### Implementation
 
-- [ ] T039 [P] [US1] Implementar `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh` em `backend/src/main/java/com/bikeshop/customers/AuthController.java` (depende de T008)
-- [ ] T040 [US1] Implementar merge de carrinho de visitante ao autenticar/cadastrar em `backend/src/main/java/com/bikeshop/cart/CartService.java` (depende de T030, T039)
-- [ ] T045 [US1] Construir formulários de login/cadastro com chamada de merge de carrinho em `frontend/src/features/auth/` (depende de T040)
-- [ ] T046 [US1] Publicar eventos de pedido/estoque em `orders.events`/`inventory.events` na criação do pedido em `backend/src/main/java/com/bikeshop/orders/OrderEventPublisher.java` (depende de T035, T012)
-- [ ] T046b [US1] Implementar notificação de confirmação de pedido (e-mail transacional via SendGrid) ao consumir `orders.events` na criação do pedido, estabelecendo a base do módulo de notificações em `backend/src/main/java/com/bikeshop/notifications/OrderConfirmationListener.java` (depende de T046)
-- [ ] T047 [US1] Adicionar logging/instrumentação de observabilidade no fluxo de checkout (Princípio V)
+- [X] T039 [P] [US1] Implementar `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh` em `backend/src/main/java/com/bikeshop/customers/AuthController.java` (depende de T008)
+- [X] T040 [US1] Implementar merge de carrinho de visitante ao autenticar/cadastrar em `backend/src/main/java/com/bikeshop/cart/CartService.java` (depende de T030, T039)
+- [X] T045 [US1] Construir formulários de login/cadastro com chamada de merge de carrinho em `frontend/src/features/auth/` + páginas `frontend/src/app/(shop)/login/` e `frontend/src/app/(shop)/register/` (depende de T040)
+- [X] T046 [US1] Publicar eventos de pedido/estoque em `orders.events`/`inventory.events` na criação do pedido em `backend/src/main/java/com/bikeshop/checkout/CheckoutService.java` via `DomainEventPublisher` (evento tipado `OrderCreatedEvent`/`InventoryAdjustedEvent`, não um `OrderEventPublisher` dedicado) (depende de T035, T012)
+- [X] T046b [US1] Implementar notificação de confirmação de pedido (e-mail transacional via SendGrid, simulado sem credenciais) ao consumir `orders.events` na criação do pedido, estabelecendo a base do módulo de notificações em `backend/src/main/java/com/bikeshop/notifications/OrderConfirmationListener.java` (depende de T046) — validado via teste de contrato com round-trip real pelo RabbitMQ
+- [X] T047 [US1] Adicionar logging/instrumentação de observabilidade no fluxo de checkout (Princípio V) em `CheckoutService`
 
-**Checkpoint 3C**: User Story 1 totalmente funcional e testável de forma independente (MVP completo).
+**Checkpoint 3C**: ✅ Atingido e validado (testes automatizados + navegador) em 2026-08-23. Cadastro/login/refresh JWT funcionando, merge de carrinho de visitante ao autenticar, checkout pré-preenchido para cliente logado, eventos de pedido/estoque publicados no RabbitMQ e consumidos pelo listener de notificação (e-mail simulado sem credenciais SendGrid), logging de observabilidade no fluxo de checkout. User Story 1 totalmente funcional e testável de forma independente (MVP completo).
 
 ---
 

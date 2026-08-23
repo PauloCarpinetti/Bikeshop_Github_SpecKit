@@ -95,7 +95,70 @@ Subimos a infraestrutura real e validamos:
 
 ### 8. Discussão sobre a Fase 3 (User Story 1 / MVP)
 
-Fase 3 tem 31 tarefas (catálogo+busca, carrinho, frete, checkout, 3 gateways de pagamento, pedidos, autenticação, notificações, 6 páginas de frontend) — bem mais complexa que a Fase 2. Estimativa discutida: **3–5 horas de trabalho**, possivelmente em 2 sessões, mais o tempo para o usuário providenciar credenciais sandbox do Stripe, Mercado Pago e PagSeguro (bloqueio externo necessário para validar o checkout de ponta a ponta). Decidido **adiar o início da Fase 3** para planejá-la de forma mais assertiva numa próxima sessão.
+Fase 3 tem 31 tarefas (catálogo+busca, carrinho, frete, checkout, 3 gateways de pagamento, pedidos, autenticação, notificações, 6 páginas de frontend) — bem mais complexa que a Fase 2. Decidido dividir em três sub-blocos menores: **3A** (catálogo + carrinho, sem dependências externas), **3B** (frete + checkout + pagamento, o mais pesado) e **3C** (autenticação + fechamento do MVP), cada um com checkpoint próprio em `tasks.md`.
+
+---
+
+## Sessão 2026-07-13 — Sub-bloco 3A (Catálogo e Carrinho)
+
+Implementadas as 12 tarefas do sub-bloco 3A:
+
+**Backend**: `Produto`/`VariacaoProduto` (entidades + Flyway V2), `ProductSearchService` com Meilisearch real (busca full-text + facetas), `ProductController`, `Carrinho`/`ItemCarrinho` no Redis (cookie `bikeshop_cart_id`), `CartService` com validação de estoque, `CartController`, `CatalogDataSeeder` (4 produtos de exemplo), CORS configurado entre frontend (3002) e backend.
+
+**Frontend**: página de catálogo com busca/filtros, página de detalhe com variações/specs/geometria, carrinho (Context + Drawer), header com contador.
+
+**Bugs reais encontrados e corrigidos**: `GlobalExceptionHandler` engolia exceções sem logar; `LazyInitializationException` no `CartService` (corrigido com `@Transactional`); `GenericJackson2JsonRedisSerializer` sem tipagem (carrinho virava `LinkedHashMap` genérico ao voltar do Redis); `TestRestTemplate` sem suporte a PATCH (faltava `httpclient5`).
+
+Validado com testes automatizados (5) e navegador (fluxo completo: busca → detalhe → adicionar → atualizar quantidade → remover).
+
+---
+
+## Sessão 2026-08-21 — Sub-bloco 3B (Frete, Checkout e Pagamento)
+
+Implementadas as 10 tarefas do sub-bloco 3B, sem credenciais reais de gateway (usuário optou por seguir sem elas):
+
+**Frete**: `ShippingProvider` + `CorreiosShippingProvider` — calcula peso cubado (fórmula padrão dos Correios) e cai para uma estimativa local quando não há credenciais reais dos Correios configuradas (mesmo padrão de resiliência do Meilisearch). Novas colunas `peso_kg`/`altura_cm`/`largura_cm`/`comprimento_cm` em `variacao_produto` (Flyway V3).
+
+**Pedidos**: `Pedido`/`ItemPedido` com ciclo de vida de status e histórico (JSON), preço congelado no momento da compra.
+
+**Pagamentos**: `PaymentGatewayAdapter` (Strategy) com 3 implementações reais (Stripe, Mercado Pago, PagSeguro) que chamam a API oficial de cada gateway quando há chave configurada, e caem em **modo simulado** (status `PENDING`, referência `SIM-<provider>-<uuid>`) quando não há — incluindo verificação de assinatura de webhook (HMAC) para Stripe e Mercado Pago.
+
+**Checkout**: `CheckoutService` orquestra tudo numa transação só — calcula frete, debita estoque, cria o pedido, inicia o pagamento e limpa o carrinho.
+
+**Frontend**: página de checkout (React Hook Form + Zod) com resumo do carrinho, cálculo de frete e seleção de gateway; tela de recuperação (`/checkout/recovery`) para quando o pedido falha.
+
+**Bugs reais encontrados e corrigidos**:
+1. **Dados de peso/dimensão incorretos** — o MySQL já tinha produtos da sessão 3A (volume Docker persistente); a migração V3 só adicionou colunas com `DEFAULT` nas linhas existentes, e o seeder não roda de novo se a tabela não está vazia. Resultado: todo item calculava frete com peso genérico (1kg/15x30x90cm) em vez do peso real. Corrigido truncando as tabelas e deixando o seeder rodar de novo.
+2. **Badge do carrinho não atualizava após o checkout** — o `CartContext` não tinha como ser "avisado" que o carrinho foi limpo no backend. Adicionado `refresh()` exposto pelo contexto, chamado pela página de checkout após o pedido ser criado.
+
+**Conflitos de porta** (mais dois projetos locais seus, `chat_mysql`/`chat_redis`/`chat_backend`, entraram em conflito): MySQL `3307→3308`, backend `8081→8082`, Redis `6379→6380`.
+
+Validado com testes automatizados (5 novos, 11 no total) e navegador (checkout completo: endereço → frete real por peso → pagamento simulado → pedido criado → carrinho limpo).
+
+---
+
+## Sessão 2026-08-23 — Sub-bloco 3C (Autenticação e fechamento do MVP)
+
+Implementadas as 8 tarefas do sub-bloco 3C, sem credenciais externas (JWT é gerado localmente; SendGrid segue o mesmo padrão de resiliência dos demais integrações — usuário confirmou que ainda não tem nenhuma credencial):
+
+**Autenticação**: entidade `Cliente` (Flyway V4, e-mail único, senha com BCrypt), `AuthController` com `POST /auth/register`, `/auth/login` e `/auth/refresh` emitindo JWT de acesso e de refresh (`JwtService` já existente da Fase 2).
+
+**Merge de carrinho**: `CartService.mergeIntoCustomerCart` — ao cadastrar ou logar, o carrinho de visitante (cookie `bikeshop_cart_id`) é somado ao carrinho do cliente (chave `customer:<id>` no Redis, somando quantidades de itens repetidos) e o carrinho da sessão atual passa a refletir o resultado mesclado.
+
+**Eventos e notificação**: `CheckoutService` publica `InventoryAdjustedEvent` (por item debitado) e `OrderCreatedEvent` (ao concluir o pedido) via `DomainEventPublisher`/RabbitMQ; `OrderConfirmationListener` consome `OrderCreatedEvent` tipado e dispara e-mail transacional via SendGrid quando há API key configurada, ou loga um aviso simulado quando não há.
+
+**Observabilidade**: logging estruturado no `CheckoutService` (início do checkout, frete calculado, checkout concluído com valores).
+
+**Frontend**: `AuthContext` (JWT + dados do cliente persistidos em `localStorage`), páginas `/login` e `/register`, `Header` mostrando "Olá, {nome}" / "Sair" quando autenticado, checkout pré-preenchendo nome/e-mail do cliente logado, teste E2E Playwright (`checkout-journey.spec.ts`) cobrindo catálogo → carrinho → cadastro com merge → checkout → confirmação.
+
+**Bugs reais encontrados e corrigidos**:
+1. **Acessibilidade (WCAG / Princípio VI da constituição)** — `<label>` sem `htmlFor`/`id` associado aos `<input>` nas páginas de login, cadastro e checkout (encontrado em autorrevisão, antes de rodar testes). Corrigido em todos os campos das 3 páginas.
+2. **Redesenho do `OrderConfirmationListener`** — a primeira versão recebia o payload do RabbitMQ como `String` bruto e tentava extrair a routing key do corpo da mensagem (routing key não faz parte do corpo — erro de design, corrigido antes de rodar). Redesenhado para consumir o record tipado `OrderCreatedEvent` diretamente, usando a desserialização tipada do Spring AMQP (`__TypeId__`).
+3. **Checkout não pré-preenchia nome/e-mail do cliente logado** — encontrado ao validar no navegador: `AuthContext` carrega o cliente do `localStorage` de forma assíncrona (`useEffect`), mas o `useForm` do checkout só lê `defaultValues` na primeira renderização (quando o cliente ainda é `null`) e o React Hook Form não reage a mudanças posteriores em `defaultValues`. Corrigido com um `useEffect` que chama `setValue` quando o cliente fica disponível.
+
+Validado com testes automatizados (2 novos — `AuthContractTest` — 13 no total, incluindo confirmação via log de que o evento `OrderCreatedEvent` percorre o RabbitMQ ponta a ponta) e navegador: cadastro com carrinho de visitante mesclado corretamente, checkout com nome/e-mail pré-preenchidos, frete recalculado, pedido criado como cliente autenticado, logout e login validados.
+
+**Follow-up conhecido (não bloqueia)**: o teste E2E Playwright (T023, `checkout-journey.spec.ts`) cobre o mesmo fluxo e está escrito, mas não roda dentro do sandbox de execução deste agente — `npx playwright test` falha com `spawn UNKNOWN` ao iniciar o `chrome.exe`, tanto via Git Bash quanto via PowerShell nativo, com ou sem sandbox desabilitado. O binário do Chromium foi baixado com sucesso; a falha é ao repassar os pipes de depuração remota do Chromium para o processo filho, uma restrição do próprio sandbox do agente ao criar subprocessos, não do shell escolhido nem do código da aplicação. Rodar `npm run test:e2e` diretamente num terminal do usuário (fora do agente) deve funcionar normalmente.
 
 ---
 
@@ -106,46 +169,41 @@ Fase 3 tem 31 tarefas (catálogo+busca, carrinho, frete, checkout, 3 gateways de
 | Constituição | ✅ Definida |
 | Especificação (spec.md) | ✅ Completa, revisada e corrigida |
 | Plano técnico (plan.md + research/data-model/quickstart/contracts) | ✅ Completo |
-| Backlog de tarefas (tasks.md) | ✅ 101 tarefas, consistência validada |
+| Backlog de tarefas (tasks.md) | ✅ 101 tarefas, consistência validada — **47 concluídas** |
 | Fase 1 — Setup | ✅ Implementada e validada |
 | Fase 2 — Foundational | ✅ Implementada e validada |
-| Fase 3 — User Story 1 (MVP: catálogo, carrinho, checkout) | ⏳ Não iniciada |
+| Fase 3A — Catálogo e Carrinho | ✅ Implementada e validada |
+| Fase 3B — Frete, Checkout e Pagamento | ✅ Implementada e validada (pagamento/frete reais pendentes de credenciais) |
+| Fase 3C — Autenticação e fechamento do MVP | ✅ Implementada e validada (**MVP / User Story 1 completo**) |
 | Fase 4 — User Story 2 (conta, pós-venda) | ⏳ Não iniciada |
 | Fase 5 — User Story 3 (backoffice) | ⏳ Não iniciada |
 | Fase 6 — Polish | ⏳ Não iniciada |
 
 ## URLs de desenvolvimento local (atuais)
 
-- Backend: `http://localhost:8081` (Swagger: `/swagger-ui/index.html`)
+> Atualizadas na sessão do sub-bloco 3B: novos conflitos de porta apareceram com outros projetos locais (`chat_backend`, `chat_mysql`, `chat_redis`), então backend/MySQL/Redis mudaram de porta novamente.
+
+- Backend: `http://localhost:8082` (Swagger: `/swagger-ui/index.html`)
 - Frontend: `http://localhost:3002`
-- MySQL (container): porta `3307`
-- Redis: `6379` · RabbitMQ: `5672` (management `15672`) · Meilisearch: `7700`
+- MySQL (container): porta `3308`
+- Redis: `6380` · RabbitMQ: `5672` (management `15672`) · Meilisearch: `7700`
 
 ## Próximos passos recomendados
 
 ### 1. Preparar credenciais externas (fazer em paralelo, não depende de código)
 
-- Criar contas sandbox no **Stripe**, **Mercado Pago** e **PagSeguro** e obter chaves de teste
-- Confirmar se haverá conta/API real dos **Correios** para o cálculo de frete em produção (hoje usamos a decisão já confirmada, mas as credenciais de acesso ainda precisam ser levantadas)
+- Criar contas sandbox no **Stripe**, **Mercado Pago** e **PagSeguro** e obter chaves de teste — os adapters já estão prontos, só falta configurar as variáveis de ambiente (`STRIPE_SECRET_KEY`, `MERCADOPAGO_ACCESS_TOKEN`, `PAGSEGURO_TOKEN`, etc. em `backend/.env.example`)
+- Obter usuário/senha da API oficial dos Correios (`CORREIOS_API_USUARIO`/`CORREIOS_API_SENHA`) — hoje o frete usa uma estimativa local por peso cubado
+- Obter uma API key do **SendGrid** (`SENDGRID_API_KEY`) para envio real do e-mail de confirmação de pedido — hoje o envio é simulado (apenas logado)
 
-### 2. Planejar a Fase 3 de forma mais assertiva
+### 2. Seguir para as Fases 4 e 5
 
-Antes de começar, definir:
-- Se a Fase 3 será quebrada em sub-blocos (ex.: catálogo+carrinho primeiro, depois checkout+pagamento, depois auth+notificações+frontend) para reduzir risco de sessões muito longas
-- Qual sub-bloco entrega o primeiro incremento testável
+Conta do cliente/pós-venda (User Story 2) e backoffice completo (User Story 3), já detalhadas em `tasks.md`.
 
-### 3. Implementar a Fase 3 (User Story 1 — MVP)
-
-Catálogo, busca (Meilisearch), carrinho (visitante + autenticado), frete (Correios), checkout, pagamento (Stripe/Mercado Pago/PagSeguro), pedidos, autenticação (JWT), notificação de confirmação e tela de recuperação de checkout — 31 tarefas (T019–T047 + T044b/T046b) já detalhadas em `tasks.md`.
-
-### 4. Seguir para as Fases 4 e 5
-
-Conta do cliente/pós-venda (User Story 2) e backoffice completo (User Story 3), também já detalhadas em `tasks.md`.
-
-### 5. Fase 6 — Polish
+### 3. Fase 6 — Polish
 
 Dashboards de observabilidade, logs centralizados, auditoria de acessibilidade, hardening de segurança e validação final de performance contra os critérios de sucesso do `spec.md`.
 
 ## Resumo executivo
 
-O projeto evoluiu da fase de descoberta (spec + constituição) para um plano técnico completo, validado por análise de consistência automatizada, e já tem uma base de código real funcionando localmente (backend Spring Boot + frontend Next.js + infraestrutura Docker), com testes passando. O próximo passo natural é a implementação da User Story 1 (MVP de catálogo e checkout), que será planejada com mais cuidado numa próxima sessão dado seu volume e as dependências externas (gateways de pagamento).
+O MVP (User Story 1) está completo: catálogo com busca, carrinho, cálculo de frete por peso real, checkout completo com pagamento (simulado, pronto para credenciais reais), autenticação (cadastro/login/JWT) com merge de carrinho de visitante, e evento de pedido disparando notificação de confirmação (simulada) — tudo testado via testes automatizados e navegador. Restam conta do cliente, backoffice e os itens de polimento — todos já detalhados em `tasks.md`.
