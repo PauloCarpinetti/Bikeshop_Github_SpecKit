@@ -178,6 +178,24 @@ Validado com testes automatizados (5 novos — `AccountContractTest`, `AccountOr
 
 ---
 
+## Sessão 2026-08-23 (continuação) — Sub-bloco 4B (Avaliações, Trocas/Devoluções e Notificação de Status)
+
+Implementadas as 10 tarefas do sub-bloco 4B, fechando a Fase 4 (User Story 2):
+
+**Backend**: `Avaliacao` (Flyway V6) + `ReviewService` — só permite avaliar um item de um pedido do próprio cliente confirmado como `ENTREGUE`, valida que o item pertence ao pedido, e rejeita avaliação duplicada (mesmo cliente/produto/pedido). `ReturnService` — solicitação de troca/devolução só para pedidos entregues, muda o status para `EM_TROCA_DEVOLUCAO` e grava o motivo no Log de Auditoria (FR-011) via `AuditService` já existente da Fase 2. `PostSaleController` expõe `POST /account/orders/{orderId}/return` e `POST /account/reviews`. `OrderStatusChangedEvent`/`OrderStatusChangedListener` notificam o cliente por e-mail (SendGrid, simulado sem credenciais) a cada mudança de status do pedido — reaproveitando um `SendGridEmailSender` extraído do listener de confirmação de pedido da Fase 3C.
+
+**Frontend**: `ReturnRequestForm` e `ReviewForm` (novos componentes) integrados na página de detalhe do pedido — aparecem quando o pedido está `ENTREGUE`; ao solicitar devolução, a UI reflete a mudança de status imediatamente sem recarregar a página.
+
+**Bugs reais encontrados e corrigidos**:
+1. **Máquina de estados do pedido bloqueava a ramificação de pós-venda** — `ENTREGUE` já era tratado como estado totalmente terminal (nenhuma saída permitida), mas o data-model exige a ramificação `entregue → em_troca_devolução`. Corrigido com uma exceção específica a essa transição em `OrderService.validarTransicao`.
+2. **Risco de consumidores concorrentes na mesma fila** — a fila `orders.events` estava vinculada ao padrão `orders.*`, que capturaria tanto `orders.created` quanto o novo `orders.status-changed`; dois listeners competindo pela mesma fila causariam falha de desserialização quando o tipo de evento não batesse com o esperado. Corrigido criando uma fila e um binding dedicados (`orders.status.events` / `orders.status-changed`) e tornando o binding original específico (`orders.created`), evitando a sobreposição — encontrado por análise antes de rodar, não em produção.
+
+Validado com testes automatizados (2 novos — `PostSaleContractTest` — 20 no total, incluindo confirmação via log de que ambos os listeners de notificação recebem exatamente o evento esperado em filas separadas) e navegador: avaliação publicada, solicitação de troca/devolução registrada com motivo auditado, rastreamento do pedido atualizado em tempo real na UI.
+
+**Follow-up conhecido (não bloqueia)**: como não há backoffice ainda (Fase 5), não existe forma de levar um pedido a `ENTREGUE` pela UI — o E2E Playwright (T051) cobre o que é alcançável hoje (cadastro, compra, atualização de conta/endereço, histórico), e a validação em navegador acima usou um `UPDATE` SQL direto para simular a entrega, só para exercitar a UI de pós-venda manualmente.
+
+---
+
 ## Estado atual do projeto
 
 | Item | Status |
@@ -185,14 +203,14 @@ Validado com testes automatizados (5 novos — `AccountContractTest`, `AccountOr
 | Constituição | ✅ Definida |
 | Especificação (spec.md) | ✅ Completa, revisada e corrigida |
 | Plano técnico (plan.md + research/data-model/quickstart/contracts) | ✅ Completo |
-| Backlog de tarefas (tasks.md) | ✅ 101 tarefas, consistência validada — **56 concluídas** |
+| Backlog de tarefas (tasks.md) | ✅ 101 tarefas, consistência validada — **66 concluídas** |
 | Fase 1 — Setup | ✅ Implementada e validada |
 | Fase 2 — Foundational | ✅ Implementada e validada |
 | Fase 3A — Catálogo e Carrinho | ✅ Implementada e validada |
 | Fase 3B — Frete, Checkout e Pagamento | ✅ Implementada e validada (pagamento/frete reais pendentes de credenciais) |
 | Fase 3C — Autenticação e fechamento do MVP | ✅ Implementada e validada (**MVP / User Story 1 completo**) |
 | Fase 4A — Perfil, Endereços e Histórico de Pedidos | ✅ Implementada e validada |
-| Fase 4B — Avaliações, Trocas/Devoluções e Notificação de Status | ⏳ Não iniciada |
+| Fase 4B — Avaliações, Trocas/Devoluções e Notificação de Status | ✅ Implementada e validada (**User Story 2 completa**) |
 | Fase 5 — User Story 3 (backoffice) | ⏳ Não iniciada |
 | Fase 6 — Polish | ⏳ Não iniciada |
 
@@ -213,9 +231,9 @@ Validado com testes automatizados (5 novos — `AccountContractTest`, `AccountOr
 - Obter usuário/senha da API oficial dos Correios (`CORREIOS_API_USUARIO`/`CORREIOS_API_SENHA`) — hoje o frete usa uma estimativa local por peso cubado
 - Obter uma API key do **SendGrid** (`SENDGRID_API_KEY`) para envio real do e-mail de confirmação de pedido — hoje o envio é simulado (apenas logado)
 
-### 2. Sub-bloco 4B e Fase 5
+### 2. Fase 5 — Backoffice (User Story 3)
 
-Avaliações de produto, trocas/devoluções e notificação de mudança de status (fecha a User Story 2), e backoffice completo (User Story 3), já detalhadas em `tasks.md`.
+CRUD de produtos/variações, ajuste de estoque, gestão de pedidos (inclui levar um pedido a `ENTREGUE`, hoje só possível via SQL direto — vai destravar o teste E2E completo de pós-venda da Fase 4B), cupons de desconto, moderação de avaliações e log de auditoria — já detalhada em `tasks.md`.
 
 ### 3. Fase 6 — Polish
 
@@ -223,4 +241,4 @@ Dashboards de observabilidade, logs centralizados, auditoria de acessibilidade, 
 
 ## Resumo executivo
 
-O MVP (User Story 1) está completo: catálogo com busca, carrinho, cálculo de frete por peso real, checkout completo com pagamento (simulado, pronto para credenciais reais), autenticação (cadastro/login/JWT) com merge de carrinho de visitante, e evento de pedido disparando notificação de confirmação (simulada) — tudo testado via testes automatizados e navegador. Restam conta do cliente, backoffice e os itens de polimento — todos já detalhados em `tasks.md`.
+O MVP (User Story 1) e a conta do cliente/pós-venda (User Story 2) estão completos: catálogo com busca, carrinho, checkout com pagamento e frete (simulados, prontos para credenciais reais), autenticação com merge de carrinho, perfil/endereços, histórico de pedidos com rastreamento, avaliações de produto e solicitação de troca/devolução com auditoria e notificação de status — tudo testado via testes automatizados e navegador. Resta o backoffice (User Story 3) e os itens de polimento — já detalhados em `tasks.md`.
