@@ -164,32 +164,60 @@ Para reduzir o tamanho de cada sessão de implementação, a Fase 3 é dividida 
 
 **Independent Test**: Cliente autenticado acessa histórico de pedidos, altera dados cadastrais e registra uma solicitação de pós-venda (cenário 2 de `quickstart.md`).
 
-### Tests for User Story 2 ⚠️
+Dividida em dois sub-blocos (mesmo racional da Fase 3): 4A entrega a base de "minha conta" (perfil/endereços + histórico/detalhe de pedidos), 4B entrega as ações de pós-venda (avaliação, troca/devolução) e a notificação de mudança de status.
 
-- [ ] T048 [P] [US2] Teste de contrato para `GET/PUT /account/profile` e `/account/addresses` em `backend/src/test/java/com/bikeshop/customers/AccountContractTest.java`
-- [ ] T049 [P] [US2] Teste de contrato para `GET /account/orders` e `GET /account/orders/{orderId}` em `backend/src/test/java/com/bikeshop/customers/AccountOrdersContractTest.java`
+### Sub-bloco 4A — Perfil, endereços e histórico de pedidos
+
+**Goal**: Cliente autenticado consulta/atualiza dados cadastrais e endereços, e acompanha o histórico e detalhe dos próprios pedidos.
+
+**Independent Test**: Logado, atualizar nome/endereço e ver o pedido criado na Fase 3 aparecer no histórico com o detalhe correto.
+
+**Depende de**: User Story 1 completa (autenticação, `Pedido`). **Pré-requisito descoberto na implementação**: `Pedido.clienteId` nunca é preenchido hoje (checkout não captura o `Authentication` do cliente logado) — precisa ser corrigido aqui para o histórico funcionar.
+
+#### Tests
+
+- [X] T048 [P] [US2] Teste de contrato para `GET/PUT /account/profile` e `/account/addresses` em `backend/src/test/java/com/bikeshop/customers/AccountContractTest.java`
+- [X] T049 [P] [US2] Teste de contrato para `GET /account/orders` e `GET /account/orders/{orderId}` em `backend/src/test/java/com/bikeshop/customers/AccountOrdersContractTest.java`
+
+#### Implementation
+
+- [X] T053 [P] [US2] Criar entidade/repositório `Endereco` em `backend/src/main/java/com/bikeshop/customers/Endereco.java`
+- [X] T054 [US2] Implementar `CustomerProfileService` (atualização de perfil/endereços) em `backend/src/main/java/com/bikeshop/customers/CustomerProfileService.java` (depende de T053)
+- [X] T055 [US2] Implementar endpoints `GET/PUT /account/profile` e `/account/addresses` em `backend/src/main/java/com/bikeshop/customers/AccountController.java` (depende de T054)
+- [X] T056 [US2] Implementar consulta de histórico/detalhe de pedidos em `backend/src/main/java/com/bikeshop/orders/OrderQueryService.java` (depende de T034 da US1; inclui associar `Pedido.clienteId` ao cliente autenticado no checkout)
+- [X] T057 [US2] Implementar endpoints `GET /account/orders` e `GET /account/orders/{orderId}` em `backend/src/main/java/com/bikeshop/customers/AccountOrdersController.java` (depende de T056)
+- [X] T062 [P] [US2] Construir UI de perfil/endereços em `frontend/src/app/(account)/profile/`
+- [X] T063 [P] [US2] Construir UI de histórico/detalhe de pedidos em `frontend/src/app/(account)/orders/`
+
+**Checkpoint 4A**: ✅ Atingido e validado (testes automatizados + navegador) em 2026-08-23. Perfil e endereços consultáveis/atualizáveis, histórico e detalhe de pedidos (com rastreamento e endereço de entrega) funcionando para o cliente autenticado, com verificação de propriedade (pedido de outro cliente retorna não encontrado). Corrigido um gap real descoberto durante a implementação: o checkout nunca vinculava `Pedido.clienteId` ao cliente autenticado — corrigido em `CheckoutController`/`CheckoutService`/`OrderService`.
+
+---
+
+### Sub-bloco 4B — Avaliações, trocas/devoluções e notificação de status
+
+**Goal**: Cliente publica avaliação de produto entregue, solicita troca/devolução de um pedido, e é notificado quando o status do pedido muda.
+
+**Independent Test**: Cenário 2 completo de `quickstart.md` (conta → histórico → devolução → avaliação), validado via E2E.
+
+**Depende de**: Sub-bloco 4A completo.
+
+#### Tests
+
 - [ ] T050 [P] [US2] Teste de contrato para `POST /account/orders/{orderId}/return` e `POST /account/reviews` em `backend/src/test/java/com/bikeshop/customers/PostSaleContractTest.java`
 - [ ] T051 [US2] Teste de integração E2E (Playwright) atualização de conta + histórico + devolução + avaliação em `frontend/tests/e2e/account-postsale.spec.ts`
 - [ ] T052 [US2] Checks de privacidade, RBAC, acessibilidade e observabilidade da história
 
-### Implementation for User Story 2
+#### Implementation
 
-- [ ] T053 [P] [US2] Criar entidade/repositório `Endereco` em `backend/src/main/java/com/bikeshop/customers/Endereco.java`
-- [ ] T054 [US2] Implementar `CustomerProfileService` (atualização de perfil/endereços) em `backend/src/main/java/com/bikeshop/customers/CustomerProfileService.java` (depende de T053)
-- [ ] T055 [US2] Implementar endpoints `GET/PUT /account/profile` e `/account/addresses` em `backend/src/main/java/com/bikeshop/customers/AccountController.java` (depende de T054)
-- [ ] T056 [US2] Implementar consulta de histórico/detalhe de pedidos em `backend/src/main/java/com/bikeshop/orders/OrderQueryService.java` (depende de T034 da US1)
-- [ ] T057 [US2] Implementar endpoints `GET /account/orders` e `GET /account/orders/{orderId}` em `backend/src/main/java/com/bikeshop/customers/AccountOrdersController.java` (depende de T056)
 - [ ] T058 [P] [US2] Criar entidade/repositório `Avaliacao` em `backend/src/main/java/com/bikeshop/reviews/Avaliacao.java`
 - [ ] T059 [US2] Implementar `ReviewService` (só permite avaliação para pedido entregue) em `backend/src/main/java/com/bikeshop/reviews/ReviewService.java` (depende de T058)
 - [ ] T060 [US2] Implementar `ReturnService` (solicitação de troca/devolução, com auditoria) em `backend/src/main/java/com/bikeshop/orders/ReturnService.java` (depende de T035, T015 da fundação)
 - [ ] T061 [US2] Implementar endpoints `POST /account/orders/{orderId}/return` e `POST /account/reviews` em `backend/src/main/java/com/bikeshop/customers/PostSaleController.java` (depende de T059, T060)
-- [ ] T062 [P] [US2] Construir UI de perfil/endereços em `frontend/src/app/(account)/profile/`
-- [ ] T063 [P] [US2] Construir UI de histórico/detalhe de pedidos em `frontend/src/app/(account)/orders/`
 - [ ] T064 [US2] Construir UI de solicitação de troca/devolução em `frontend/src/features/account/returns/` (depende de T063)
 - [ ] T065 [US2] Construir UI de publicação de avaliação em `frontend/src/features/reviews/`
 - [ ] T066 [US2] Notificar cliente sobre mudança de status do pedido via consumidor de fila (SendGrid/FCM), estendendo o módulo de notificações em `backend/src/main/java/com/bikeshop/notifications/` (depende de T046b da US1)
 
-**Checkpoint**: User Stories 1 e 2 funcionando de forma independente
+**Checkpoint 4B**: User Stories 1 e 2 funcionando de forma independente (fecha a Fase 4).
 
 ---
 

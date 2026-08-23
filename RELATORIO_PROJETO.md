@@ -162,6 +162,22 @@ Validado com testes automatizados (2 novos — `AuthContractTest` — 13 no tota
 
 ---
 
+## Sessão 2026-08-23 (continuação) — Sub-bloco 4A (Perfil, Endereços e Histórico de Pedidos)
+
+Implementadas as 9 tarefas do sub-bloco 4A (Fase 4 dividida em 4A/4B, mesmo racional da Fase 3):
+
+**Backend**: `Endereco` (Flyway V5, FK para `cliente`) + `telefone` em `Cliente`; `CustomerProfileService` (perfil, troca de senha opcional, CRUD de endereços com controle de "endereço padrão"); `AccountController` (`GET/PUT /account/profile`, `GET/POST/PUT /account/addresses`); `OrderQueryService` + `AccountOrdersController` (`GET /account/orders`, `GET /account/orders/{orderId}`, com verificação de propriedade — pedido de outro cliente retorna "não encontrado", não vaza existência). `OrderDto` passou a incluir `criadoEm`, `statusHistorico` e `enderecoEntrega` (necessários para a tela de rastreamento).
+
+**Frontend**: página `/profile` (dados cadastrais + lista/criação/edição de endereços) e páginas `/orders` (histórico) e `/orders/[id]` (detalhe com linha do tempo de status e endereço de entrega); `Header` ganhou links "Olá, {nome}" → `/profile` e "Meus pedidos" → `/orders`.
+
+**Bugs reais encontrados e corrigidos**:
+1. **Gap descoberto na implementação**: o checkout nunca vinculava `Pedido.clienteId` ao cliente autenticado (sempre gravava `null`), mesmo logado — o histórico de pedidos ficaria sempre vazio. Corrigido propagando o `Authentication` do `CheckoutController` até `OrderService.criarPedido` (guest checkout continua funcionando; `clienteId` fica `null` só para visitante).
+2. **Mismatch de schema na migração** — `V5__account.sql` criou `endereco.estado` como `CHAR(2)`, mas a entidade JPA mapeia como `VARCHAR` por padrão; Hibernate recusou subir com `SchemaManagementException`. Corrigido trocando para `VARCHAR(2)` (H2, usado nos testes, não pegou o mismatch — só apareceu ao subir contra o MySQL real).
+
+Validado com testes automatizados (5 novos — `AccountContractTest`, `AccountOrdersContractTest` — 18 no total) e navegador: perfil consultado/atualizado, endereço criado, pedido novo criado como cliente autenticado aparecendo no histórico com rastreamento e endereço corretos, acesso a pedido de outro cliente corretamente negado.
+
+---
+
 ## Estado atual do projeto
 
 | Item | Status |
@@ -169,13 +185,14 @@ Validado com testes automatizados (2 novos — `AuthContractTest` — 13 no tota
 | Constituição | ✅ Definida |
 | Especificação (spec.md) | ✅ Completa, revisada e corrigida |
 | Plano técnico (plan.md + research/data-model/quickstart/contracts) | ✅ Completo |
-| Backlog de tarefas (tasks.md) | ✅ 101 tarefas, consistência validada — **47 concluídas** |
+| Backlog de tarefas (tasks.md) | ✅ 101 tarefas, consistência validada — **56 concluídas** |
 | Fase 1 — Setup | ✅ Implementada e validada |
 | Fase 2 — Foundational | ✅ Implementada e validada |
 | Fase 3A — Catálogo e Carrinho | ✅ Implementada e validada |
 | Fase 3B — Frete, Checkout e Pagamento | ✅ Implementada e validada (pagamento/frete reais pendentes de credenciais) |
 | Fase 3C — Autenticação e fechamento do MVP | ✅ Implementada e validada (**MVP / User Story 1 completo**) |
-| Fase 4 — User Story 2 (conta, pós-venda) | ⏳ Não iniciada |
+| Fase 4A — Perfil, Endereços e Histórico de Pedidos | ✅ Implementada e validada |
+| Fase 4B — Avaliações, Trocas/Devoluções e Notificação de Status | ⏳ Não iniciada |
 | Fase 5 — User Story 3 (backoffice) | ⏳ Não iniciada |
 | Fase 6 — Polish | ⏳ Não iniciada |
 
@@ -196,9 +213,9 @@ Validado com testes automatizados (2 novos — `AuthContractTest` — 13 no tota
 - Obter usuário/senha da API oficial dos Correios (`CORREIOS_API_USUARIO`/`CORREIOS_API_SENHA`) — hoje o frete usa uma estimativa local por peso cubado
 - Obter uma API key do **SendGrid** (`SENDGRID_API_KEY`) para envio real do e-mail de confirmação de pedido — hoje o envio é simulado (apenas logado)
 
-### 2. Seguir para as Fases 4 e 5
+### 2. Sub-bloco 4B e Fase 5
 
-Conta do cliente/pós-venda (User Story 2) e backoffice completo (User Story 3), já detalhadas em `tasks.md`.
+Avaliações de produto, trocas/devoluções e notificação de mudança de status (fecha a User Story 2), e backoffice completo (User Story 3), já detalhadas em `tasks.md`.
 
 ### 3. Fase 6 — Polish
 
