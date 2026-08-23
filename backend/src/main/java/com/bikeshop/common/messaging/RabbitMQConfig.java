@@ -19,6 +19,7 @@ public class RabbitMQConfig {
   public static final String EXCHANGE = "bikeshop.events";
 
   public static final String ORDERS_QUEUE = "orders.events";
+  public static final String ORDERS_STATUS_QUEUE = "orders.status.events";
   public static final String INVENTORY_QUEUE = "inventory.events";
   public static final String NOTIFICATIONS_QUEUE = "notifications.events";
 
@@ -33,6 +34,11 @@ public class RabbitMQConfig {
   }
 
   @Bean
+  public Queue ordersStatusQueue() {
+    return new Queue(ORDERS_STATUS_QUEUE, true);
+  }
+
+  @Bean
   public Queue inventoryQueue() {
     return new Queue(INVENTORY_QUEUE, true);
   }
@@ -44,7 +50,14 @@ public class RabbitMQConfig {
 
   @Bean
   public Binding ordersBinding(Queue ordersQueue, TopicExchange bikeshopExchange) {
-    return BindingBuilder.bind(ordersQueue).to(bikeshopExchange).with("orders.*");
+    // Rota específica (não "orders.*") para não competir com ordersStatusBinding pela mesma
+    // mensagem — cada fila tem exatamente um formato de evento, consumido por um único listener.
+    return BindingBuilder.bind(ordersQueue).to(bikeshopExchange).with("orders.created");
+  }
+
+  @Bean
+  public Binding ordersStatusBinding(Queue ordersStatusQueue, TopicExchange bikeshopExchange) {
+    return BindingBuilder.bind(ordersStatusQueue).to(bikeshopExchange).with("orders.status-changed");
   }
 
   @Bean

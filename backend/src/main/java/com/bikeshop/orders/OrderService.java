@@ -3,6 +3,7 @@ package com.bikeshop.orders;
 import com.bikeshop.checkout.shipping.ShippingQuote;
 import com.bikeshop.common.exception.BusinessException;
 import com.bikeshop.common.exception.NotFoundException;
+import com.bikeshop.common.messaging.DomainEventPublisher;
 import com.bikeshop.orders.dto.OrderDto;
 import com.bikeshop.orders.dto.OrderItemDto;
 import com.bikeshop.orders.dto.OrderStatusHistoryEntryDto;
@@ -30,10 +31,12 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final ObjectMapper objectMapper;
+    private final DomainEventPublisher eventPublisher;
 
-    public OrderService(OrderRepository orderRepository, ObjectMapper objectMapper) {
+    public OrderService(OrderRepository orderRepository, ObjectMapper objectMapper, DomainEventPublisher eventPublisher) {
         this.orderRepository = orderRepository;
         this.objectMapper = objectMapper;
+        this.eventPublisher = eventPublisher;
     }
 
     public Pedido criarPedido(String cartId, Long clienteId, String clienteNome, String clienteEmail,
@@ -71,9 +74,20 @@ public class OrderService {
 
     public Pedido atualizarStatus(Long pedidoId, PedidoStatus novoStatus) {
         Pedido pedido = buscarPorId(pedidoId);
-        validarTransicao(pedido.getStatus(), novoStatus);
+        PedidoStatus statusAnterior = pedido.getStatus();
+        validarTransicao(statusAnterior, novoStatus);
         pedido.setStatus(novoStatus);
         pedido.setStatusHistorico(comHistoricoAdicionado(pedido.getStatusHistorico(), novoStatus));
+
+        // A transição inicial (CRIADO -> AGUARDANDO_PAGAMENTO) ocorre dentro do próprio checkout,
+        // que já publica OrderCreatedEvent — notificar de novo aqui seria redundante (T066).
+        boolean transicaoInicialDoCheckout = statusAnterior == PedidoStatus.CRIADO && novoStatus == PedidoStatus.AGUARDANDO_PAGAMENTO;
+        if (!transicaoInicialDoCheckout) {
+            eventPublisher.publish("orders.status-changed", new OrderStatusChangedEvent(
+                    pedido.getId(), pedido.getClienteNome(), pedido.getClienteEmail(),
+                    statusAnterior.name(), novoStatus.name()));
+        }
+
         return pedido;
     }
 
@@ -119,7 +133,10 @@ public class OrderService {
     }
 
     private void validarTransicao(PedidoStatus atual, PedidoStatus novo) {
-        if (STATUS_TERMINAIS.contains(atual)) {
+        // ENTREGUE é terminal para o fluxo de venda, mas ainda permite a ramificação de
+        // pós-venda para troca/devolução (data-model.md, FR-008/US2) — só bloqueia demais saídas.
+        boolean ramificacaoDeTrocaDevolucao = atual == PedidoStatus.ENTREGUE && novo == PedidoStatus.EM_TROCA_DEVOLUCAO;
+        if (STATUS_TERMINAIS.contains(atual) && !ramificacaoDeTrocaDevolucao) {
             throw new BusinessException(
                     "TRANSICAO_INVALIDA",
                     "Pedido em status terminal (%s) não pode mudar para %s".formatted(atual, novo),

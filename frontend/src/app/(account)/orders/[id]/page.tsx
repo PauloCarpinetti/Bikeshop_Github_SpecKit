@@ -7,6 +7,8 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { ApiRequestError } from "@/services/apiClient";
 import { getOrder } from "@/services/account";
 import type { Order } from "@/services/checkout";
+import { ReturnRequestForm } from "@/features/account/returns/ReturnRequestForm";
+import { ReviewForm } from "@/features/reviews/ReviewForm";
 
 function formatPrice(value: number): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -105,6 +107,37 @@ export default function OrderDetailPage() {
           <div className="flex justify-between font-semibold"><span>Total</span><span>{formatPrice(order.valorTotal)}</span></div>
         </div>
       </section>
+
+      {order.status === "ENTREGUE" && (
+        <section className="mt-6 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700">Avaliar produtos</h2>
+            <ul className="mt-2 space-y-2">
+              {order.itens.map((item) => (
+                <li key={item.variacaoProdutoId}>
+                  <ReviewForm
+                    pedidoId={order.id}
+                    variacaoProdutoId={item.variacaoProdutoId}
+                    nomeProduto={item.nomeProduto}
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700">Pós-venda</h2>
+            <div className="mt-2">
+              <ReturnRequestForm orderId={order.id} onRequested={setOrder} />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {order.status === "EM_TROCA_DEVOLUCAO" && (
+        <section className="mt-6 rounded bg-amber-50 p-3 text-sm text-amber-800">
+          Sua solicitação de troca/devolução está em andamento.
+        </section>
+      )}
     </main>
   );
 }
