@@ -9,7 +9,7 @@ API REST (Spring Boot 3 / Java 21) da plataforma BikeShop. Ver [plan.md](../spec
 3. Se o wrapper do Maven (`mvnw`) ainda não existir neste diretório, gere-o uma vez (requer Maven instalado): `mvn -N wrapper:wrapper -Dmaven=3.9.9`
 4. Rode a aplicação: `./mvnw spring-boot:run` (ou `mvn spring-boot:run` sem o wrapper)
 
-API disponível em `http://localhost:8081` (porta 8081, não 8080, para não conflitar com outros serviços locais), documentação em `http://localhost:8081/swagger-ui.html`.
+API disponível em `http://localhost:8082` (porta 8082, para não conflitar com outros serviços locais nas portas 8080/8081), documentação em `http://localhost:8082/swagger-ui.html`.
 
 ## Testes
 

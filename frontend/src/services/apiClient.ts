@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8081/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8082/api/v1";
 
 export const apiErrorSchema = z.object({
   code: z.string(),
@@ -29,7 +29,7 @@ export async function apiFetch<T>(path: string, schema: z.ZodType<T>, options: R
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     // Necessário para o cookie de carrinho de visitante (bikeshop_cart_id) trafegar entre as
-    // origens do frontend (3002) e do backend (8081) — ver SecurityConfig.corsConfigurationSource.
+    // origens do frontend (3002) e do backend (8082) — ver SecurityConfig.corsConfigurationSource.
     credentials: "include",
     headers: {
       "Content-Type": "application/json",

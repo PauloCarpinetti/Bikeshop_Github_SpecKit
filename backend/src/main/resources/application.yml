@@ -3,7 +3,7 @@ spring:
     name: bikeshop-backend
 
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3307/bikeshop?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    url: ${DB_URL:jdbc:mysql://localhost:3308/bikeshop?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${DB_USERNAME:bikeshop}
     password: ${DB_PASSWORD:bikeshop}
 
@@ -22,7 +22,7 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      port: ${REDIS_PORT:6380}
 
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
@@ -31,8 +31,8 @@ spring:
     password: ${RABBITMQ_PASSWORD:guest}
 
 server:
-  # Porta 8081 (não 8080) para não conflitar com outros serviços já rodando na máquina.
-  port: ${SERVER_PORT:8081}
+  # Porta 8082 (não 8080/8081, já usadas por outros containers locais) para não conflitar.
+  port: ${SERVER_PORT:8082}
 
 management:
   endpoints:
@@ -63,6 +63,25 @@ bikeshop:
     allowed-origin: ${FRONTEND_ORIGIN:http://localhost:3002}
   cart:
     ttl-days: ${CART_TTL_DAYS:30}
+  correios:
+    # Sem credenciais reais ainda -> CorreiosShippingProvider usa estimativa local (ver research.md).
+    api-usuario: ${CORREIOS_API_USUARIO:}
+    api-senha: ${CORREIOS_API_SENHA:}
+  payments:
+    stripe:
+      secret-key: ${STRIPE_SECRET_KEY:}
+      webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    mercadopago:
+      access-token: ${MERCADOPAGO_ACCESS_TOKEN:}
+      webhook-secret: ${MERCADOPAGO_WEBHOOK_SECRET:}
+    pagseguro:
+      token: ${PAGSEGURO_TOKEN:}
+      webhook-token: ${PAGSEGURO_WEBHOOK_TOKEN:}
+  notifications:
+    sendgrid:
+      # Sem chave real -> confirmação de pedido é simulada (logada), não enviada de verdade.
+      api-key: ${SENDGRID_API_KEY:}
+      from-email: ${SENDGRID_FROM_EMAIL:pedidos@bikeshop.example}
 
 sentry:
   dsn: ${SENTRY_DSN:}

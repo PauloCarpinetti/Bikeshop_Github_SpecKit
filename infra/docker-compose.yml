@@ -7,8 +7,8 @@ services:
       MYSQL_USER: bikeshop
       MYSQL_PASSWORD: bikeshop
     ports:
-      # Host 3307 -> evita conflito com um MySQL local já instalado na porta 3306.
-      - "3307:3306"
+      # Host 3308 -> evita conflito com MySQL local (3306) e com o container chat_mysql (3307).
+      - "3308:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -20,7 +20,8 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      # Host 6380 -> evita conflito com outro Redis local (ex.: chat_redis) já usando 6379.
+      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
