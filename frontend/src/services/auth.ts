@@ -7,6 +7,7 @@ export const authResponseSchema = z.object({
   clienteId: z.number(),
   nome: z.string(),
   email: z.string(),
+  role: z.string(),
 });
 
 export type AuthResponse = z.infer<typeof authResponseSchema>;

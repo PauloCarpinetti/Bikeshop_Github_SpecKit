@@ -14,6 +14,7 @@ public record ProductDetailDto(
         Map<String, Object> especificacoesTecnicas,
         Map<String, Object> tabelaGeometria,
         List<String> imagens,
+        String status,
         List<VariantDto> variacoes
 ) {
 }

@@ -46,10 +46,14 @@ public class Cliente {
     }
 
     public Cliente(String nome, String email, String senhaHash) {
+        this(nome, email, senhaHash, Role.CUSTOMER);
+    }
+
+    public Cliente(String nome, String email, String senhaHash, Role role) {
         this.nome = nome;
         this.email = email;
         this.senhaHash = senhaHash;
-        this.role = Role.CUSTOMER;
+        this.role = role;
     }
 
     public Long getId() {

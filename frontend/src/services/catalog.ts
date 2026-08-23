@@ -40,6 +40,7 @@ export const productDetailSchema = z.object({
   especificacoesTecnicas: z.record(z.unknown()),
   tabelaGeometria: z.record(z.unknown()),
   imagens: z.array(z.string()),
+  status: z.string(),
   variacoes: z.array(variantSchema),
 });
 

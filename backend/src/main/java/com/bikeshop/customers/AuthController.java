@@ -97,6 +97,7 @@ public class AuthController {
     private AuthResponse toAuthResponse(Cliente cliente) {
         String accessToken = jwtService.generateAccessToken(String.valueOf(cliente.getId()), List.of(cliente.getRole()));
         String refreshToken = jwtService.generateRefreshToken(String.valueOf(cliente.getId()));
-        return new AuthResponse(accessToken, refreshToken, cliente.getId(), cliente.getNome(), cliente.getEmail());
+        return new AuthResponse(accessToken, refreshToken, cliente.getId(), cliente.getNome(), cliente.getEmail(),
+                cliente.getRole().name());
     }
 }

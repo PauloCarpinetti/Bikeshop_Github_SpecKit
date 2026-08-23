@@ -55,6 +55,7 @@ public class ProductMapper {
                 readMap(produto.getEspecificacoesTecnicas()),
                 readMap(produto.getTabelaGeometria()),
                 readList(produto.getImagens()),
+                produto.getStatus().name(),
                 variantDtos
         );
     }

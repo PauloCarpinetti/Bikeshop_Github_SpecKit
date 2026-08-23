@@ -7,7 +7,7 @@ const ACCESS_TOKEN_KEY = "bikeshop_access_token";
 const REFRESH_TOKEN_KEY = "bikeshop_refresh_token";
 const CLIENTE_KEY = "bikeshop_cliente";
 
-type Cliente = { clienteId: number; nome: string; email: string };
+type Cliente = { clienteId: number; nome: string; email: string; role: string };
 
 type AuthContextValue = {
   cliente: Cliente | null;
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const persist = useCallback((auth: authService.AuthResponse) => {
     window.localStorage.setItem(ACCESS_TOKEN_KEY, auth.accessToken);
     window.localStorage.setItem(REFRESH_TOKEN_KEY, auth.refreshToken);
-    const clienteData = { clienteId: auth.clienteId, nome: auth.nome, email: auth.email };
+    const clienteData = { clienteId: auth.clienteId, nome: auth.nome, email: auth.email, role: auth.role };
     window.localStorage.setItem(CLIENTE_KEY, JSON.stringify(clienteData));
     setCliente(clienteData);
   }, []);

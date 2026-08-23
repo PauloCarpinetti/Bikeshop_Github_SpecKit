@@ -28,6 +28,9 @@ export function Header() {
             <div className="flex items-center gap-2 text-sm">
               <Link href="/profile" className="text-gray-600 hover:underline">Olá, {cliente.nome.split(" ")[0]}</Link>
               <Link href="/orders" className="text-gray-500 hover:underline">Meus pedidos</Link>
+              {(cliente.role === "ADMIN" || cliente.role === "OPERATOR") && (
+                <Link href="/admin/products" className="text-gray-500 hover:underline">Backoffice</Link>
+              )}
               <button onClick={handleLogout} className="text-gray-500 underline hover:text-gray-900">
                 Sair
               </button>

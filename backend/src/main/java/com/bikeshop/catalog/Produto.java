@@ -130,4 +130,22 @@ public class Produto {
     public Instant getAtualizadoEm() {
         return atualizadoEm;
     }
+
+    public void atualizar(String nome, String descricao, String categoria, String marca, String modalidade,
+                           String especificacoesTecnicas, String tabelaGeometria, String imagens) {
+        this.nome = nome;
+        this.descricao = descricao;
+        this.categoria = categoria;
+        this.marca = marca;
+        this.modalidade = modalidade;
+        this.especificacoesTecnicas = especificacoesTecnicas;
+        this.tabelaGeometria = tabelaGeometria;
+        this.imagens = imagens;
+        this.atualizadoEm = Instant.now();
+    }
+
+    public void atualizarStatus(ProdutoStatus status) {
+        this.status = status;
+        this.atualizadoEm = Instant.now();
+    }
 }

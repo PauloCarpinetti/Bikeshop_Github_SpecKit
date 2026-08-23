@@ -157,4 +157,31 @@ public class VariacaoProduto {
     public Instant getCriadoEm() {
         return criadoEm;
     }
+
+    public void atualizar(String atributos, BigDecimal preco, VariacaoStatus status,
+                           BigDecimal pesoKg, BigDecimal alturaCm, BigDecimal larguraCm, BigDecimal comprimentoCm) {
+        this.atributos = atributos;
+        this.preco = preco;
+        this.status = status;
+        this.pesoKg = pesoKg;
+        this.alturaCm = alturaCm;
+        this.larguraCm = larguraCm;
+        this.comprimentoCm = comprimentoCm;
+    }
+
+    /** Ajuste manual de estoque pelo backoffice (T075) — positivo repõe, negativo corrige/remove. */
+    public void ajustarEstoque(int delta) {
+        int novoEstoque = estoqueDisponivel + delta;
+        if (novoEstoque < 0) {
+            throw new com.bikeshop.common.exception.BusinessException(
+                    "ESTOQUE_INSUFICIENTE",
+                    "Ajuste deixaria o estoque do SKU %s negativo".formatted(sku),
+                    org.springframework.http.HttpStatus.BAD_REQUEST
+            );
+        }
+        estoqueDisponivel = novoEstoque;
+        if (status != VariacaoStatus.DESCONTINUADO) {
+            status = estoqueDisponivel == 0 ? VariacaoStatus.ESGOTADO : VariacaoStatus.DISPONIVEL;
+        }
+    }
 }

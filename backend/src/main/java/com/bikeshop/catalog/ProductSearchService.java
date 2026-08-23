@@ -58,6 +58,16 @@ public class ProductSearchService {
         }
     }
 
+    /** Remove o produto do índice de busca (ex.: ao inativá-lo no backoffice, T074) — o registro
+     * continua no MySQL, só deixa de aparecer nos resultados de busca pública. */
+    public void removeProduct(Long produtoId) {
+        try {
+            meilisearchClient.index(INDEX_UID).deleteDocument(String.valueOf(produtoId));
+        } catch (Exception ex) {
+            log.warn("Falha ao remover produto '{}' do Meilisearch: {}", produtoId, ex.getMessage());
+        }
+    }
+
     public ProductSearchResultDto search(String q, ProductSearchFilters filters, int page, int size) {
         try {
             Index index = meilisearchClient.index(INDEX_UID);

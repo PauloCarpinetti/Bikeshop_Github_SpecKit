@@ -63,6 +63,10 @@ bikeshop:
     allowed-origin: ${FRONTEND_ORIGIN:http://localhost:3002}
   cart:
     ttl-days: ${CART_TTL_DAYS:30}
+  admin:
+    # Usuário administrativo de desenvolvimento (Fase 5), criado uma única vez no primeiro start.
+    seed-email: ${ADMIN_SEED_EMAIL:admin@bikeshop.example}
+    seed-password: ${ADMIN_SEED_PASSWORD:admin12345}
   correios:
     # Sem credenciais reais ainda -> CorreiosShippingProvider usa estimativa local (ver research.md).
     api-usuario: ${CORREIOS_API_USUARIO:}
