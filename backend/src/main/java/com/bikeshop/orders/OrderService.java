@@ -91,6 +91,12 @@ public class OrderService {
         return pedido;
     }
 
+    public Pedido aplicarCupom(Long pedidoId, String cupomCodigo, java.math.BigDecimal valorDesconto) {
+        Pedido pedido = buscarPorId(pedidoId);
+        pedido.aplicarCupom(cupomCodigo, valorDesconto);
+        return pedido;
+    }
+
     public Pedido registrarPagamento(Long pedidoId, String provider, String reference, String status) {
         Pedido pedido = buscarPorId(pedidoId);
         pedido.setPayment(provider, reference, status);
@@ -104,8 +110,10 @@ public class OrderService {
                 .toList();
 
         return new OrderDto(
-                pedido.getId(), pedido.getStatus().name(), pedido.getValorItens(), pedido.getValorFrete(),
-                pedido.getValorTotal(), pedido.getTransportadora(), pedido.getPrazoFreteDias(),
+                pedido.getId(), pedido.getClienteNome(), pedido.getClienteEmail(),
+                pedido.getStatus().name(), pedido.getValorItens(), pedido.getValorFrete(),
+                pedido.getValorDesconto(), pedido.getCupomCodigo(), pedido.getValorTotal(),
+                pedido.getTransportadora(), pedido.getPrazoFreteDias(),
                 pedido.getPaymentProvider(), pedido.getPaymentReference(), pedido.getPaymentStatus(),
                 pedido.getCriadoEm(), toStatusHistorico(pedido.getStatusHistorico()),
                 toEndereco(pedido.getEnderecoEntrega()), itens

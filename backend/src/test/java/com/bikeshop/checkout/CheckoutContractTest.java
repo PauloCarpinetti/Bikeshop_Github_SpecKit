@@ -44,7 +44,7 @@ class CheckoutContractTest {
                 "Maria Ciclista",
                 "maria@example.com",
                 new EnderecoEntregaInput("01310-100", "Av. Paulista", "1000", "Ap 10", "Bela Vista", "São Paulo", "SP"),
-                PaymentProvider.STRIPE
+                PaymentProvider.STRIPE, null
         );
 
         ResponseEntity<CheckoutResultDto> response = restTemplate.exchange(
@@ -86,7 +86,7 @@ class CheckoutContractTest {
                 "João Ciclista",
                 "joao@example.com",
                 new EnderecoEntregaInput("20040-020", "Av. Rio Branco", "1", null, "Centro", "Rio de Janeiro", "RJ"),
-                PaymentProvider.MERCADO_PAGO
+                PaymentProvider.MERCADO_PAGO, null
         );
         ResponseEntity<CheckoutResultDto> checkoutResponse = restTemplate.exchange(
                 "/api/v1/checkout/orders", HttpMethod.POST, new HttpEntity<>(request, headers), CheckoutResultDto.class);

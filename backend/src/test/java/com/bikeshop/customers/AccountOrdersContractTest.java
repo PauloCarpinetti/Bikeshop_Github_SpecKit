@@ -64,7 +64,7 @@ class AccountOrdersContractTest {
         CreateOrderRequest orderRequest = new CreateOrderRequest(
                 "Cliente Pedidos", email,
                 new EnderecoEntregaInput("01310-100", "Av. Paulista", "1000", "Ap 10", "Bela Vista", "São Paulo", "SP"),
-                PaymentProvider.STRIPE
+                PaymentProvider.STRIPE, null
         );
         ResponseEntity<CheckoutResultDto> checkoutResponse = restTemplate.exchange(
                 "/api/v1/checkout/orders", HttpMethod.POST, new HttpEntity<>(orderRequest, checkoutHeaders), CheckoutResultDto.class);
@@ -102,7 +102,7 @@ class AccountOrdersContractTest {
         CreateOrderRequest orderRequest = new CreateOrderRequest(
                 "Dono do Pedido", "dono@example.com",
                 new EnderecoEntregaInput("20040-020", "Av. Rio Branco", "1", null, "Centro", "Rio de Janeiro", "RJ"),
-                PaymentProvider.PAGSEGURO
+                PaymentProvider.PAGSEGURO, null
         );
         ResponseEntity<CheckoutResultDto> checkoutResponse = restTemplate.exchange(
                 "/api/v1/checkout/orders", HttpMethod.POST, new HttpEntity<>(orderRequest, headersDono), CheckoutResultDto.class);

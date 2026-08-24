@@ -39,9 +39,13 @@ export const orderStatusHistoryEntrySchema = z.object({
 
 export const orderSchema = z.object({
   id: z.number(),
+  clienteNome: z.string(),
+  clienteEmail: z.string(),
   status: z.string(),
   valorItens: z.number(),
   valorFrete: z.number(),
+  valorDesconto: z.number(),
+  cupomCodigo: z.string().nullable(),
   valorTotal: z.number(),
   transportadora: z.string().nullable(),
   prazoFreteDias: z.number().nullable(),
@@ -75,11 +79,27 @@ export type CreateOrderInput = {
   clienteEmail: string;
   endereco: EnderecoEntrega;
   paymentProvider: PaymentProvider;
+  cupomCodigo?: string;
 };
 
 export async function createOrder(input: CreateOrderInput): Promise<CheckoutResult> {
   return apiFetch("/checkout/orders", checkoutResultSchema, {
     method: "POST",
     body: input,
+  });
+}
+
+export const couponQuoteSchema = z.object({
+  codigo: z.string(),
+  tipo: z.string(),
+  valorDesconto: z.number(),
+});
+
+export type CouponQuote = z.infer<typeof couponQuoteSchema>;
+
+export async function quoteCoupon(codigo: string): Promise<CouponQuote> {
+  return apiFetch("/checkout/coupon", couponQuoteSchema, {
+    method: "POST",
+    body: { codigo },
   });
 }

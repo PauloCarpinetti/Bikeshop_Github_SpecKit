@@ -11,6 +11,7 @@ public record CreateOrderRequest(
         @NotBlank String clienteNome,
         @NotBlank @Email String clienteEmail,
         @NotNull @Valid EnderecoEntregaInput endereco,
-        @NotNull PaymentProvider paymentProvider
+        @NotNull PaymentProvider paymentProvider,
+        String cupomCodigo
 ) {
 }

@@ -2,6 +2,8 @@ package com.bikeshop.checkout;
 
 import com.bikeshop.cart.CartCookieResolver;
 import com.bikeshop.checkout.dto.CheckoutResultDto;
+import com.bikeshop.checkout.dto.CouponQuoteResponseDto;
+import com.bikeshop.checkout.dto.CouponRequest;
 import com.bikeshop.checkout.dto.CreateOrderRequest;
 import com.bikeshop.checkout.dto.ShippingQuoteRequest;
 import com.bikeshop.checkout.dto.ShippingQuoteResponseDto;
@@ -39,6 +41,15 @@ public class CheckoutController {
             @Valid @RequestBody ShippingQuoteRequest request) {
         String resolvedCartId = requireExistingCart(cartId, response);
         return checkoutService.quoteShipping(resolvedCartId, request.cep());
+    }
+
+    @PostMapping("/coupon")
+    public CouponQuoteResponseDto validarCupom(
+            @CookieValue(name = CartCookieResolver.CART_COOKIE, required = false) String cartId,
+            HttpServletResponse response,
+            @Valid @RequestBody CouponRequest request) {
+        String resolvedCartId = requireExistingCart(cartId, response);
+        return checkoutService.quoteCoupon(resolvedCartId, request.codigo());
     }
 
     @PostMapping("/orders")

@@ -64,6 +64,9 @@ public class Pedido {
     @Column(name = "cupom_codigo")
     private String cupomCodigo;
 
+    @Column(name = "valor_desconto", nullable = false, precision = 10, scale = 2)
+    private BigDecimal valorDesconto = BigDecimal.ZERO;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PedidoStatus status;
@@ -158,6 +161,18 @@ public class Pedido {
 
     public String getCupomCodigo() {
         return cupomCodigo;
+    }
+
+    public BigDecimal getValorDesconto() {
+        return valorDesconto;
+    }
+
+    /** Aplica o desconto de um cupom validado (T079b) e recalcula o total. */
+    void aplicarCupom(String cupomCodigo, BigDecimal valorDesconto) {
+        this.cupomCodigo = cupomCodigo;
+        this.valorDesconto = valorDesconto;
+        this.valorTotal = valorItens.add(valorFrete).subtract(valorDesconto);
+        this.atualizadoEm = Instant.now();
     }
 
     public PedidoStatus getStatus() {

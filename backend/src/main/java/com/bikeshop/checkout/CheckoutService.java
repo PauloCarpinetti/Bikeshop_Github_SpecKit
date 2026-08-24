@@ -7,6 +7,7 @@ import com.bikeshop.catalog.InventoryAdjustedEvent;
 import com.bikeshop.catalog.VariacaoProduto;
 import com.bikeshop.catalog.VariacaoProdutoRepository;
 import com.bikeshop.checkout.dto.CheckoutResultDto;
+import com.bikeshop.checkout.dto.CouponQuoteResponseDto;
 import com.bikeshop.checkout.dto.CreateOrderRequest;
 import com.bikeshop.checkout.dto.ShippingQuoteResponseDto;
 import com.bikeshop.checkout.shipping.ShippingLineItem;
@@ -47,16 +48,19 @@ public class CheckoutService {
     private final OrderService orderService;
     private final PaymentGatewayResolver paymentGatewayResolver;
     private final DomainEventPublisher eventPublisher;
+    private final CouponService couponService;
 
     public CheckoutService(CartService cartService, VariacaoProdutoRepository variacaoProdutoRepository,
                             ShippingProvider shippingProvider, OrderService orderService,
-                            PaymentGatewayResolver paymentGatewayResolver, DomainEventPublisher eventPublisher) {
+                            PaymentGatewayResolver paymentGatewayResolver, DomainEventPublisher eventPublisher,
+                            CouponService couponService) {
         this.cartService = cartService;
         this.variacaoProdutoRepository = variacaoProdutoRepository;
         this.shippingProvider = shippingProvider;
         this.orderService = orderService;
         this.paymentGatewayResolver = paymentGatewayResolver;
         this.eventPublisher = eventPublisher;
+        this.couponService = couponService;
     }
 
     @Transactional(readOnly = true)
@@ -64,6 +68,13 @@ public class CheckoutService {
         CartViewDto cart = requireNonEmptyCart(cartId);
         ShippingQuote quote = shippingProvider.calculate(cep, toShippingLineItems(cart));
         return new ShippingQuoteResponseDto(quote.transportadora(), quote.valor(), quote.prazoDias(), quote.estimado());
+    }
+
+    @Transactional(readOnly = true)
+    public CouponQuoteResponseDto quoteCoupon(String cartId, String codigo) {
+        CartViewDto cart = requireNonEmptyCart(cartId);
+        CouponValidationResult resultado = couponService.validar(codigo, cart.total(), categoriasDoCarrinho(cart));
+        return new CouponQuoteResponseDto(resultado.cupom().getCodigo(), resultado.cupom().getTipo().name(), resultado.valorDesconto());
     }
 
     public CheckoutResultDto criarPedido(String cartId, CreateOrderRequest request, Long clienteId) {
@@ -91,6 +102,13 @@ public class CheckoutService {
 
         Pedido pedido = orderService.criarPedido(cartId, clienteId, request.clienteNome(), request.clienteEmail(),
                 request.endereco(), itensPedido, frete);
+
+        if (request.cupomCodigo() != null && !request.cupomCodigo().isBlank()) {
+            CouponValidationResult cupomValidado = couponService.validar(request.cupomCodigo(), cart.total(), categoriasDoCarrinho(cart));
+            pedido = orderService.aplicarCupom(pedido.getId(), cupomValidado.cupom().getCodigo(), cupomValidado.valorDesconto());
+            couponService.registrarUso(cupomValidado.cupom());
+            log.info("Cupom aplicado: cartId={} codigo={} valorDesconto={}", cartId, cupomValidado.cupom().getCodigo(), cupomValidado.valorDesconto());
+        }
 
         PaymentGatewayAdapter adapter = paymentGatewayResolver.resolve(request.paymentProvider());
         PaymentIntentResult intent = adapter.createIntent(pedido);
@@ -123,6 +141,13 @@ public class CheckoutService {
                     return new ShippingLineItem(variacao.getPesoKg(), variacao.getAlturaCm(),
                             variacao.getLarguraCm(), variacao.getComprimentoCm(), item.quantidade());
                 })
+                .toList();
+    }
+
+    private List<String> categoriasDoCarrinho(CartViewDto cart) {
+        return cart.itens().stream()
+                .map(item -> buscarVariacao(item.variacaoProdutoId()).getProduto().getCategoria())
+                .distinct()
                 .toList();
     }
 

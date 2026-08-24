@@ -143,6 +143,8 @@ export default function AdminProductsPage() {
         <h1 className="text-2xl font-semibold">Produtos (backoffice)</h1>
         <div className="flex gap-3 text-sm">
           <Link href="/admin/inventory" className="underline">Ajustar estoque</Link>
+          <Link href="/admin/orders" className="underline">Pedidos</Link>
+          <Link href="/admin/coupons" className="underline">Cupons</Link>
           <button
             type="button"
             onClick={() => setIsCreateOpen((open) => !open)}

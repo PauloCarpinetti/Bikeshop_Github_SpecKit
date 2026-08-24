@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { apiFetch } from "./apiClient";
 import { productDetailSchema, variantSchema, type ProductDetail, type Variant } from "./catalog";
+import { orderSchema, type Order } from "./checkout";
 
 export type VariantInput = {
   sku: string;
@@ -67,4 +68,53 @@ export async function updateVariant(productId: number, variantId: number, input:
 
 export async function adjustStock(sku: string, ajuste: number, motivo?: string): Promise<Variant> {
   return apiFetch(`/admin/products/${sku}/stock`, variantSchema, { method: "PATCH", body: { ajuste, motivo } });
+}
+
+export async function listAdminOrders(): Promise<Order[]> {
+  return apiFetch("/admin/orders", z.array(orderSchema));
+}
+
+export async function updateOrderStatus(id: number, status: string): Promise<Order> {
+  return apiFetch(`/admin/orders/${id}`, orderSchema, { method: "PATCH", body: { status } });
+}
+
+export const couponSchema = z.object({
+  id: z.number(),
+  codigo: z.string(),
+  tipo: z.string(),
+  valor: z.number(),
+  validoDe: z.string(),
+  validoAte: z.string(),
+  valorMinimoCarrinho: z.number().nullable(),
+  categoriasAplicaveis: z.array(z.string()),
+  limiteDeUso: z.number().nullable(),
+  usosRealizados: z.number(),
+});
+
+export type Coupon = z.infer<typeof couponSchema>;
+
+export type CouponInput = {
+  tipo: string;
+  valor: number;
+  validoDe: string;
+  validoAte: string;
+  valorMinimoCarrinho?: number;
+  categoriasAplicaveis?: string[];
+  limiteDeUso?: number;
+};
+
+export async function listCoupons(): Promise<Coupon[]> {
+  return apiFetch("/admin/coupons", z.array(couponSchema));
+}
+
+export async function createCoupon(codigo: string, input: CouponInput): Promise<Coupon> {
+  return apiFetch("/admin/coupons", couponSchema, { method: "POST", body: { codigo, ...input } });
+}
+
+export async function updateCoupon(id: number, input: CouponInput): Promise<Coupon> {
+  return apiFetch(`/admin/coupons/${id}`, couponSchema, { method: "PUT", body: input });
+}
+
+export async function deactivateCoupon(id: number): Promise<void> {
+  await apiFetch(`/admin/coupons/${id}`, z.unknown(), { method: "DELETE" });
 }

@@ -7,9 +7,13 @@ import java.util.List;
 
 public record OrderDto(
         Long id,
+        String clienteNome,
+        String clienteEmail,
         String status,
         BigDecimal valorItens,
         BigDecimal valorFrete,
+        BigDecimal valorDesconto,
+        String cupomCodigo,
         BigDecimal valorTotal,
         String transportadora,
         Integer prazoFreteDias,

@@ -10,8 +10,10 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { ApiRequestError } from "@/services/apiClient";
 import {
   createOrder,
+  quoteCoupon,
   quoteShipping,
   type CheckoutResult,
+  type CouponQuote,
   type PaymentProvider,
   type ShippingQuote,
 } from "@/services/checkout";
@@ -50,6 +52,10 @@ export default function CheckoutPage() {
   const [shippingError, setShippingError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<CheckoutResult | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [coupon, setCoupon] = useState<CouponQuote | null>(null);
+  const [isQuotingCoupon, setIsQuotingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   const {
     register,
@@ -92,6 +98,23 @@ export default function CheckoutPage() {
     }
   }
 
+  async function handleQuoteCoupon() {
+    if (!couponCode.trim()) {
+      setCouponError("Informe um código de cupom.");
+      return;
+    }
+    setIsQuotingCoupon(true);
+    setCouponError(null);
+    try {
+      setCoupon(await quoteCoupon(couponCode.trim()));
+    } catch (error) {
+      setCoupon(null);
+      setCouponError(error instanceof ApiRequestError ? error.error.message : "Não foi possível validar o cupom agora.");
+    } finally {
+      setIsQuotingCoupon(false);
+    }
+  }
+
   async function onSubmit(values: CheckoutFormValues) {
     setIsSubmitting(true);
     try {
@@ -99,6 +122,7 @@ export default function CheckoutPage() {
         clienteNome: values.clienteNome,
         clienteEmail: values.clienteEmail,
         paymentProvider: values.paymentProvider,
+        cupomCodigo: coupon?.codigo,
         endereco: {
           cep: values.cep,
           logradouro: values.logradouro,
@@ -137,6 +161,11 @@ export default function CheckoutPage() {
         <dl className="mx-auto mt-6 max-w-xs space-y-1 text-left text-sm">
           <div className="flex justify-between"><dt>Itens</dt><dd>{formatPrice(result.pedido.valorItens)}</dd></div>
           <div className="flex justify-between"><dt>Frete ({result.pedido.transportadora})</dt><dd>{formatPrice(result.pedido.valorFrete)}</dd></div>
+          {result.pedido.valorDesconto > 0 && (
+            <div className="flex justify-between text-green-700">
+              <dt>Desconto ({result.pedido.cupomCodigo})</dt><dd>-{formatPrice(result.pedido.valorDesconto)}</dd>
+            </div>
+          )}
           <div className="flex justify-between font-semibold"><dt>Total</dt><dd>{formatPrice(result.pedido.valorTotal)}</dd></div>
         </dl>
       </main>
@@ -216,6 +245,25 @@ export default function CheckoutPage() {
           </div>
         </div>
 
+        <div>
+          <label htmlFor="cupom" className="block text-sm font-medium">Cupom de desconto (opcional)</label>
+          <div className="mt-1 flex gap-2">
+            <input
+              id="cupom"
+              value={couponCode}
+              onChange={(event) => { setCouponCode(event.target.value); setCoupon(null); }}
+              className="w-full rounded border px-3 py-2 text-sm"
+              placeholder="CODIGO10"
+            />
+            <button type="button" onClick={handleQuoteCoupon} disabled={isQuotingCoupon}
+                    className="whitespace-nowrap rounded border px-3 py-2 text-sm hover:bg-gray-50">
+              {isQuotingCoupon ? "Validando..." : "Aplicar"}
+            </button>
+          </div>
+          {couponError && <p className="mt-1 text-xs text-red-600">{couponError}</p>}
+          {coupon && <p className="mt-1 text-xs text-green-700">Cupom {coupon.codigo} aplicado: -{formatPrice(coupon.valorDesconto)}</p>}
+        </div>
+
         <fieldset>
           <legend className="text-sm font-medium">Forma de pagamento</legend>
           <div className="mt-2 space-y-2">
@@ -259,9 +307,15 @@ export default function CheckoutPage() {
               {shipping.estimado && " (estimativa)"}
             </p>
           )}
+          {coupon && (
+            <div className="flex justify-between text-green-700">
+              <span>Desconto ({coupon.codigo})</span>
+              <span>-{formatPrice(coupon.valorDesconto)}</span>
+            </div>
+          )}
           <div className="mt-2 flex justify-between text-base font-semibold">
             <span>Total</span>
-            <span>{formatPrice(cart.total + (shipping?.valor ?? 0))}</span>
+            <span>{formatPrice(cart.total + (shipping?.valor ?? 0) - (coupon?.valorDesconto ?? 0))}</span>
           </div>
         </div>
       </aside>

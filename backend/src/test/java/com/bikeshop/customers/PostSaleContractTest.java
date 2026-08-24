@@ -109,7 +109,7 @@ class PostSaleContractTest {
         CreateOrderRequest orderRequest = new CreateOrderRequest(
                 "Cliente PosVenda", "postsale@example.com",
                 new EnderecoEntregaInput("01310-100", "Av. Paulista", "1000", null, "Bela Vista", "São Paulo", "SP"),
-                PaymentProvider.STRIPE
+                PaymentProvider.STRIPE, null
         );
         ResponseEntity<CheckoutResultDto> checkoutResponse = restTemplate.exchange(
                 "/api/v1/checkout/orders", HttpMethod.POST, new HttpEntity<>(orderRequest, checkoutHeaders), CheckoutResultDto.class);
