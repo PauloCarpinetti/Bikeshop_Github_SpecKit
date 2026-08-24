@@ -212,6 +212,22 @@ Validado com testes automatizados (2 novos — `ProductAdminContractTest` — 22
 
 ---
 
+## Sessão 2026-08-23 (continuação) — Sub-bloco 5B (Pedidos e Cupons)
+
+Implementadas as 9 tarefas do sub-bloco 5B:
+
+**Backend**: `OrderAdminService`/`OrderAdminController` (`GET/PATCH /admin/orders`) — reaproveita `OrderService.atualizarStatus` (já valida a transição e notifica o cliente, T066) e grava a ação no Log de Auditoria (FR-011), diferente da transição automática do checkout/webhook. `CupomDesconto` (Flyway V7, com `usos_realizados`) + `CouponService` — valida validade, valor mínimo do carrinho, categoria aplicável e limite de uso, rejeitando com mensagem clara (edge case da spec); `CouponAdminController` para CRUD e `POST /checkout/coupon` (em `CheckoutController`) para validação/preview. `Pedido` ganhou `valorDesconto` (nova coluna) e o método `aplicarCupom`, aplicado em `POST /checkout/orders` antes da criação da intenção de pagamento (para o valor cobrado já refletir o desconto) — `OrderDto` passou a expor `valorDesconto`, `cupomCodigo`, `clienteNome` e `clienteEmail` (necessários para a UI administrativa identificar o dono do pedido).
+
+**Frontend**: `/admin/orders` (listar pedidos com dados do cliente, atualizar status) e `/admin/coupons` (criar/listar/desativar cupons); campo de cupom integrado à página de checkout do cliente, com preview do desconto antes de finalizar o pedido.
+
+**Bugs reais encontrados e corrigidos**:
+1. **Bug de fuso horário no formulário de cupom** — `toDatetimeLocal` fatiava a string ISO (UTC) direto para o input `datetime-local` (que sempre representa hora local, sem timezone), deslocando a data de início do cupom para o futuro dependendo do fuso do navegador; o cupom nascia com "válido de" ainda não alcançado e era rejeitado como expirado. Corrigido compensando o offset de timezone antes de formatar.
+2. **Falso alarme durante a validação em navegador**: o clique automatizado no botão "Aplicar" do cupom não disparava o handler de forma confiável (mesma flakiness de automação já registrada em sessões anteriores) — confirmado como problema da ferramenta de automação, não da aplicação, ao disparar o clique via `element.click()` diretamente.
+
+Validado com testes automatizados (4 novos — `OrderAdminContractTest`, `CouponAdminContractTest` — 26 no total, incluindo o edge case de cupom expirado) e navegador: cupom criado e aplicado no checkout com o valor de desconto correto (15% calculado e persistido), contador de uso incrementado, pedido listado no backoffice com dados do cliente e cupom aplicado visíveis, status atualizado com entrada correspondente no Log de Auditoria.
+
+---
+
 ## Estado atual do projeto
 
 | Item | Status |
@@ -219,7 +235,7 @@ Validado com testes automatizados (2 novos — `ProductAdminContractTest` — 22
 | Constituição | ✅ Definida |
 | Especificação (spec.md) | ✅ Completa, revisada e corrigida |
 | Plano técnico (plan.md + research/data-model/quickstart/contracts) | ✅ Completo |
-| Backlog de tarefas (tasks.md) | ✅ 101 tarefas, consistência validada — **72 concluídas** |
+| Backlog de tarefas (tasks.md) | ✅ 101 tarefas, consistência validada — **81 concluídas** |
 | Fase 1 — Setup | ✅ Implementada e validada |
 | Fase 2 — Foundational | ✅ Implementada e validada |
 | Fase 3A — Catálogo e Carrinho | ✅ Implementada e validada |
@@ -228,7 +244,7 @@ Validado com testes automatizados (2 novos — `ProductAdminContractTest` — 22
 | Fase 4A — Perfil, Endereços e Histórico de Pedidos | ✅ Implementada e validada |
 | Fase 4B — Avaliações, Trocas/Devoluções e Notificação de Status | ✅ Implementada e validada (**User Story 2 completa**) |
 | Fase 5A — Produtos e Estoque | ✅ Implementada e validada |
-| Fase 5B — Pedidos e Cupons | ⏳ Não iniciada |
+| Fase 5B — Pedidos e Cupons | ✅ Implementada e validada |
 | Fase 5C — Clientes, Auditoria, Moderação e Fechamento | ⏳ Não iniciada |
 | Fase 6 — Polish | ⏳ Não iniciada |
 
@@ -249,9 +265,9 @@ Validado com testes automatizados (2 novos — `ProductAdminContractTest` — 22
 - Obter usuário/senha da API oficial dos Correios (`CORREIOS_API_USUARIO`/`CORREIOS_API_SENHA`) — hoje o frete usa uma estimativa local por peso cubado
 - Obter uma API key do **SendGrid** (`SENDGRID_API_KEY`) para envio real do e-mail de confirmação de pedido — hoje o envio é simulado (apenas logado)
 
-### 2. Sub-blocos 5B e 5C — Fecham o Backoffice (User Story 3)
+### 2. Sub-bloco 5C — Fecha o Backoffice (User Story 3)
 
-5B: gestão de pedidos (inclui levar um pedido a `ENTREGUE`, hoje só possível via SQL direto — vai destravar o teste E2E completo de pós-venda da Fase 4B) e cupons de desconto, integrados ao checkout. 5C: clientes (bloqueio), log de auditoria, moderação de avaliações, guardas de RBAC formais no frontend e o E2E completo do backoffice — já detalhados em `tasks.md`.
+Clientes (consulta/bloqueio), log de auditoria, moderação de avaliações, guardas de RBAC formais no frontend (`features/admin/guards.ts`, consolidando o `useRequireAdmin` já usado desde a 5A) e o E2E completo do backoffice — já detalhados em `tasks.md`. Com `/admin/orders` já permitindo levar um pedido a `ENTREGUE` (5B), o teste E2E completo de pós-venda da Fase 4B (T051) já pode ser refeito sem o `UPDATE` SQL manual usado até aqui.
 
 ### 3. Fase 6 — Polish
 
@@ -259,4 +275,4 @@ Dashboards de observabilidade, logs centralizados, auditoria de acessibilidade, 
 
 ## Resumo executivo
 
-O MVP (User Story 1) e a conta do cliente/pós-venda (User Story 2) estão completos, e o backoffice (User Story 3) começou: catálogo com busca, carrinho, checkout com pagamento e frete (simulados, prontos para credenciais reais), autenticação com merge de carrinho, perfil/endereços, histórico de pedidos com rastreamento, avaliações de produto, solicitação de troca/devolução com auditoria e notificação de status, e agora gestão administrativa de produtos/estoque — tudo testado via testes automatizados e navegador. Restam pedidos/cupons e clientes/auditoria/moderação no backoffice, e os itens de polimento — já detalhados em `tasks.md`.
+O MVP (User Story 1) e a conta do cliente/pós-venda (User Story 2) estão completos, e o backoffice (User Story 3) está quase completo: catálogo com busca, carrinho, checkout com pagamento, frete e cupons de desconto (pagamento/frete simulados, prontos para credenciais reais), autenticação com merge de carrinho, perfil/endereços, histórico de pedidos com rastreamento, avaliações de produto, solicitação de troca/devolução com auditoria e notificação de status, e gestão administrativa de produtos/estoque/pedidos/cupons — tudo testado via testes automatizados e navegador. Resta clientes/auditoria/moderação no backoffice, e os itens de polimento — já detalhados em `tasks.md`.

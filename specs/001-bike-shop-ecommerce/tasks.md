@@ -263,20 +263,20 @@ Dividida em três sub-blocos (mesmo racional das Fases 3 e 4): 5A entrega a gest
 
 #### Tests
 
-- [ ] T068 [P] [US3] Teste de contrato para `GET/PATCH /admin/orders` em `backend/src/test/java/com/bikeshop/admin/OrderAdminContractTest.java`
-- [ ] T069 [P] [US3] Teste de contrato para CRUD `/admin/coupons` e validação de cupom em `backend/src/test/java/com/bikeshop/admin/CouponAdminContractTest.java`
+- [X] T068 [P] [US3] Teste de contrato para `GET/PATCH /admin/orders` em `backend/src/test/java/com/bikeshop/admin/OrderAdminContractTest.java`
+- [X] T069 [P] [US3] Teste de contrato para CRUD `/admin/coupons` e validação de cupom em `backend/src/test/java/com/bikeshop/admin/CouponAdminContractTest.java`
 
 #### Implementation
 
-- [ ] T076 [US3] Implementar `GET/PATCH /admin/orders` (status, documentos de envio) em `backend/src/main/java/com/bikeshop/admin/OrderAdminController.java` (depende de T035 da US1)
-- [ ] T077 [P] [US3] Criar entidade/repositório `CupomDesconto` em `backend/src/main/java/com/bikeshop/admin/CupomDesconto.java`
-- [ ] T078 [US3] Implementar `CouponService` (validação de validade/valor mínimo/categoria, edge case de cupom expirado) em `backend/src/main/java/com/bikeshop/checkout/CouponService.java` (depende de T077)
-- [ ] T079 [US3] Implementar endpoints `/admin/coupons` e `POST /checkout/coupon` em `backend/src/main/java/com/bikeshop/admin/CouponAdminController.java` (depende de T078)
-- [ ] T079b [US3] Integrar validação/aplicação de cupom ao fluxo de checkout `POST /checkout/orders` em `backend/src/main/java/com/bikeshop/checkout/CheckoutController.java`, conectando ao `CouponService` (depende de T078, T079, T038 da US1)
-- [ ] T084 [P] [US3] Construir UI de gestão de pedidos em `frontend/src/app/(admin)/orders/`
-- [ ] T085 [P] [US3] Construir UI de gestão de cupons em `frontend/src/app/(admin)/coupons/`
+- [X] T076 [US3] Implementar `GET/PATCH /admin/orders` (status, documentos de envio) em `backend/src/main/java/com/bikeshop/admin/OrderAdminController.java` (depende de T035 da US1) — "documentos de envio" não implementado (fora de escopo: sem transportadora/integração real); PATCH grava auditoria (FR-011) e reaproveita a notificação de mudança de status já existente (T066)
+- [X] T077 [P] [US3] Criar entidade/repositório `CupomDesconto` em `backend/src/main/java/com/bikeshop/admin/CupomDesconto.java`
+- [X] T078 [US3] Implementar `CouponService` (validação de validade/valor mínimo/categoria, edge case de cupom expirado) em `backend/src/main/java/com/bikeshop/checkout/CouponService.java` (depende de T077)
+- [X] T079 [US3] Implementar endpoints `/admin/coupons` e `POST /checkout/coupon` em `backend/src/main/java/com/bikeshop/admin/CouponAdminController.java` (depende de T078) — `POST /checkout/coupon` fica em `CheckoutController.java` (endpoint de checkout, não de admin)
+- [X] T079b [US3] Integrar validação/aplicação de cupom ao fluxo de checkout `POST /checkout/orders` em `backend/src/main/java/com/bikeshop/checkout/CheckoutController.java`, conectando ao `CouponService` (depende de T078, T079, T038 da US1)
+- [X] T084 [P] [US3] Construir UI de gestão de pedidos em `frontend/src/app/admin/orders/` (caminho real sem route group, mesmo motivo de T082/T083)
+- [X] T085 [P] [US3] Construir UI de gestão de cupons em `frontend/src/app/admin/coupons/` (idem)
 
-**Checkpoint 5B**: pedidos administráveis (status/envio) e cupons de desconto funcionando ponta a ponta (criação no backoffice + aplicação no checkout), demonstrável e testável isoladamente.
+**Checkpoint 5B**: ✅ Atingido e validado (testes automatizados + navegador) em 2026-08-23. Pedidos administráveis (listagem + atualização de status com auditoria) e cupons de desconto (criação, validação de validade/valor mínimo/categoria/limite de uso, edge case de cupom expirado) funcionando ponta a ponta — criados no backoffice e aplicados no checkout do cliente, com desconto persistido no pedido e contador de uso incrementado.
 
 ---
 
