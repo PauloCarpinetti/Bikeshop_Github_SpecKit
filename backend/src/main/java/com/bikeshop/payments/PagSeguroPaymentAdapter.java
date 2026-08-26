@@ -83,7 +83,7 @@ public class PagSeguroPaymentAdapter implements PaymentGatewayAdapter {
     public PaymentWebhookEvent parseWebhook(String rawPayload, Map<String, String> headers) {
         if (!SimulatedPaymentSupport.isBlank(webhookToken)) {
             String received = headers.get("x-webhook-token");
-            if (received == null || !received.equals(webhookToken)) {
+            if (received == null || !WebhookSignatures.constantTimeEquals(received, webhookToken)) {
                 throw new BusinessException("WEBHOOK_INVALIDO", "Token do webhook PagSeguro ausente ou inválido", HttpStatus.BAD_REQUEST);
             }
         }

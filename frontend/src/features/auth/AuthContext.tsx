@@ -14,7 +14,7 @@ type AuthContextValue = {
   isLoading: boolean;
   register: (nome: string, email: string, senha: string) => Promise<void>;
   login: (email: string, senha: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -51,7 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persist(await authService.login(email, senha));
   }, [persist]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const refreshToken = window.localStorage.getItem(REFRESH_TOKEN_KEY);
+    try {
+      // Revoga os tokens no backend (T093) — best-effort: mesmo se a chamada falhar (rede fora do
+      // ar, token já expirado), o logout local sempre prossegue.
+      await authService.logout(refreshToken);
+    } catch {
+      // Ignorado de propósito.
+    }
     window.localStorage.removeItem(ACCESS_TOKEN_KEY);
     window.localStorage.removeItem(REFRESH_TOKEN_KEY);
     window.localStorage.removeItem(CLIENTE_KEY);

@@ -79,23 +79,31 @@ public class MercadoPagoPaymentAdapter implements PaymentGatewayAdapter {
 
     @Override
     public PaymentWebhookEvent parseWebhook(String rawPayload, Map<String, String> headers) {
-        if (!SimulatedPaymentSupport.isBlank(webhookSecret)) {
-            verifySignature(headers);
-        }
+        JsonNode root;
         try {
-            JsonNode root = objectMapper.readTree(rawPayload);
-            String id = root.path("data").path("id").asText();
-            String type = root.path("action").asText(root.path("type").asText());
-            // A API de notificação não traz o status final no corpo; quem consome o evento consulta
-            // o pagamento por id quando necessário. Aqui repassamos o "type/action" como status bruto.
-            return new PaymentWebhookEvent(id, type);
+            root = objectMapper.readTree(rawPayload);
         } catch (Exception ex) {
             throw new BusinessException("WEBHOOK_INVALIDO", "Payload de webhook do Mercado Pago inválido", HttpStatus.BAD_REQUEST);
         }
+        String id = root.path("data").path("id").asText();
+
+        if (!SimulatedPaymentSupport.isBlank(webhookSecret)) {
+            verifySignature(id, headers);
+        }
+
+        // A API de notificação não traz o status final no corpo; quem consome o evento consulta
+        // o pagamento por id quando necessário. Aqui repassamos o "type/action" como status bruto.
+        String type = root.path("action").asText(root.path("type").asText());
+        return new PaymentWebhookEvent(id, type);
     }
 
-    /** Verificação conforme o esquema x-signature/x-request-id documentado pelo Mercado Pago. */
-    private void verifySignature(Map<String, String> headers) {
+    /**
+     * Verificação conforme o esquema x-signature/x-request-id documentado pelo Mercado Pago. O
+     * manifest usa o {@code id} extraído do corpo (campo {@code data.id}) — não existe um header
+     * "data-id" no webhook real do Mercado Pago (bug anterior: o manifest sempre usava string
+     * vazia nesse campo, fazendo a assinatura nunca bater contra um webhook real).
+     */
+    private void verifySignature(String dataId, Map<String, String> headers) {
         String signatureHeader = headers.get("x-signature");
         String requestId = headers.get("x-request-id");
         if (signatureHeader == null || requestId == null) {
@@ -109,13 +117,13 @@ public class MercadoPagoPaymentAdapter implements PaymentGatewayAdapter {
             }
             String ts = parts.get("ts");
             String expected = parts.get("v1");
-            String manifest = "id:%s;request-id:%s;ts:%s;".formatted(headers.getOrDefault("data-id", ""), requestId, ts);
+            String manifest = "id:%s;request-id:%s;ts:%s;".formatted(dataId, requestId, ts);
 
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(webhookSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             String computed = HexFormat.of().formatHex(mac.doFinal(manifest.getBytes(StandardCharsets.UTF_8)));
 
-            if (!computed.equals(expected)) {
+            if (expected == null || !WebhookSignatures.constantTimeEquals(computed, expected)) {
                 throw new BusinessException("WEBHOOK_INVALIDO", "Assinatura do webhook Mercado Pago não confere", HttpStatus.BAD_REQUEST);
             }
         } catch (BusinessException ex) {

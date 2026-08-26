@@ -42,6 +42,18 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+  metrics:
+    distribution:
+      percentiles-histogram:
+        # Necessário para os painéis de latência p95 dos dashboards Grafana (T089) — sem isso,
+        # http_server_requests_seconds_* não expõe buckets de histograma no Prometheus.
+        http.server.requests: true
+
+# T090 (Fase 6): loga em console (padrão) E em arquivo — Promtail lê este arquivo montado do host
+# para agregar no Loki (o backend roda nativamente, não em container).
+logging:
+  file:
+    name: logs/backend.log
 
 springdoc:
   api-docs:

@@ -25,3 +25,15 @@ export async function login(email: string, senha: string): Promise<AuthResponse>
     body: { email, senha },
   });
 }
+
+/**
+ * Revoga o access token (lido do header Authorization pelo apiFetch) e, se informado, o refresh
+ * token — via blacklist no Redis (T093). Sem isso, "Sair" só limpava o localStorage no client; os
+ * tokens em si continuavam válidos até expirar mesmo após o logout.
+ */
+export async function logout(refreshToken: string | null): Promise<void> {
+  await apiFetch("/auth/logout", z.unknown(), {
+    method: "POST",
+    body: { refreshToken },
+  });
+}

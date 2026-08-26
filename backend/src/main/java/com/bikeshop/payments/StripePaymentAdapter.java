@@ -120,7 +120,7 @@ public class StripePaymentAdapter implements PaymentGatewayAdapter {
             byte[] hash = mac.doFinal(signedPayload.getBytes(StandardCharsets.UTF_8));
             String computedSignature = HexFormat.of().formatHex(hash);
 
-            if (!computedSignature.equals(expectedSignature)) {
+            if (expectedSignature == null || !WebhookSignatures.constantTimeEquals(computedSignature, expectedSignature)) {
                 throw new BusinessException("WEBHOOK_INVALIDO", "Assinatura do webhook Stripe não confere", HttpStatus.BAD_REQUEST);
             }
         } catch (BusinessException ex) {

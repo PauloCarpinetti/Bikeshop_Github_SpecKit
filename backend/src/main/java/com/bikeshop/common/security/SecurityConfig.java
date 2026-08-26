@@ -58,10 +58,14 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             auth ->
                 auth
-                    // Catálogo, carrinho, checkout/pagamento (guest checkout), autenticação,
-                    // documentação e webhooks são públicos nas sub-fases 3A/3B — não há login
-                    // ainda (chega na 3C). A partir da 3C, vale reavaliar quais destas rotas devem
-                    // exigir sessão autenticada (ex.: ownership do pedido em /payments/**).
+                    // Catálogo, carrinho, checkout/pagamento, autenticação, documentação e
+                    // webhooks são públicos por design (guest checkout é um requisito do
+                    // produto — comprar sem login precisa continuar funcionando). Reavaliado na
+                    // Fase 6 (T093): em vez de exigir autenticação nessas rotas (o que quebraria
+                    // o guest checkout), a checagem de ownership foi movida para dentro de
+                    // PaymentController.createIntent — pedido de cliente autenticado só aceita
+                    // intenção de pagamento criada pelo próprio dono; pedido de convidado
+                    // continua público (não tem um dono autenticado para checar).
                     .requestMatchers(
                         "/api/v1/catalog/**",
                         "/api/v1/cart/**",

@@ -96,7 +96,7 @@ export default function ProductDetailPage() {
             <dl className="mt-2 grid grid-cols-2 gap-2 text-sm text-gray-600">
               {Object.entries(product.especificacoesTecnicas).map(([key, value]) => (
                 <div key={key}>
-                  <dt className="capitalize text-gray-400">{key}</dt>
+                  <dt className="capitalize text-gray-500">{key}</dt>
                   <dd>{String(value)}</dd>
                 </div>
               ))}
@@ -110,7 +110,7 @@ export default function ProductDetailPage() {
             <dl className="mt-2 grid grid-cols-2 gap-2 text-sm text-gray-600">
               {Object.entries(product.tabelaGeometria).map(([key, value]) => (
                 <div key={key}>
-                  <dt className="capitalize text-gray-400">{key}</dt>
+                  <dt className="capitalize text-gray-500">{key}</dt>
                   <dd>{String(value)}</dd>
                 </div>
               ))}

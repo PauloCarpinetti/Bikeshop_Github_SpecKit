@@ -21,9 +21,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private static final String BEARER_PREFIX = "Bearer ";
 
   private final JwtService jwtService;
+  private final TokenBlacklistService tokenBlacklistService;
 
-  public JwtAuthenticationFilter(JwtService jwtService) {
+  public JwtAuthenticationFilter(JwtService jwtService, TokenBlacklistService tokenBlacklistService) {
     this.jwtService = jwtService;
+    this.tokenBlacklistService = tokenBlacklistService;
   }
 
   @Override
@@ -39,7 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
       if (jwtService.isValid(token)) {
         Claims claims = jwtService.parseClaims(token);
-        if ("access".equals(claims.get("type", String.class))) {
+        if ("access".equals(claims.get("type", String.class)) && !tokenBlacklistService.isRevoked(claims.getId())) {
           String subject = claims.getSubject();
           @SuppressWarnings("unchecked")
           List<String> roles = claims.get("roles", List.class);

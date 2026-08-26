@@ -4,8 +4,10 @@ import com.bikeshop.cart.CartCookieResolver;
 import com.bikeshop.cart.CartService;
 import com.bikeshop.common.exception.BusinessException;
 import com.bikeshop.common.security.JwtService;
+import com.bikeshop.common.security.TokenBlacklistService;
 import com.bikeshop.customers.dto.AuthResponse;
 import com.bikeshop.customers.dto.LoginRequest;
+import com.bikeshop.customers.dto.LogoutRequest;
 import com.bikeshop.customers.dto.RefreshRequest;
 import com.bikeshop.customers.dto.RegisterRequest;
 import io.jsonwebtoken.Claims;
@@ -18,28 +20,34 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Cadastro, login e refresh de token (FR-008). Registro e login mesclam automaticamente o
+ * Cadastro, login, refresh e logout de token (FR-008). Registro e login mesclam automaticamente o
  * carrinho de visitante da sessão atual com o carrinho salvo do cliente (FR-004, T040).
  */
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
+    private static final String BEARER_PREFIX = "Bearer ";
+
     private final ClienteRepository clienteRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final TokenBlacklistService tokenBlacklistService;
     private final CartService cartService;
     private final CartCookieResolver cartCookieResolver;
 
     public AuthController(ClienteRepository clienteRepository, PasswordEncoder passwordEncoder,
-                           JwtService jwtService, CartService cartService, CartCookieResolver cartCookieResolver) {
+                           JwtService jwtService, TokenBlacklistService tokenBlacklistService,
+                           CartService cartService, CartCookieResolver cartCookieResolver) {
         this.clienteRepository = clienteRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.tokenBlacklistService = tokenBlacklistService;
         this.cartService = cartService;
         this.cartCookieResolver = cartCookieResolver;
     }
@@ -87,11 +95,38 @@ public class AuthController {
         if (!"refresh".equals(claims.get("type", String.class))) {
             throw new BusinessException("TOKEN_INVALIDO", "Token informado não é um refresh token", HttpStatus.UNAUTHORIZED);
         }
+        if (tokenBlacklistService.isRevoked(claims.getId())) {
+            throw new BusinessException("TOKEN_INVALIDO", "Refresh token revogado", HttpStatus.UNAUTHORIZED);
+        }
 
         Long clienteId = Long.valueOf(claims.getSubject());
         Cliente cliente = clienteRepository.findById(clienteId)
                 .orElseThrow(() -> new BusinessException("TOKEN_INVALIDO", "Cliente não encontrado", HttpStatus.UNAUTHORIZED));
         return toAuthResponse(cliente);
+    }
+
+    /**
+     * Revoga o access token da requisição (header {@code Authorization}) e, se informado, o
+     * refresh token associado — ambos ficam inválidos imediatamente via blacklist no Redis
+     * (sistema é stateless por padrão, então sem isso um token vazado seguiria válido até expirar).
+     */
+    @PostMapping("/logout")
+    public void logout(@RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+                        @RequestBody(required = false) LogoutRequest request) {
+        if (authorizationHeader != null && authorizationHeader.startsWith(BEARER_PREFIX)) {
+            revokeIfValid(authorizationHeader.substring(BEARER_PREFIX.length()));
+        }
+        if (request != null && request.refreshToken() != null && !request.refreshToken().isBlank()) {
+            revokeIfValid(request.refreshToken());
+        }
+    }
+
+    private void revokeIfValid(String token) {
+        if (!jwtService.isValid(token)) {
+            return;
+        }
+        Claims claims = jwtService.parseClaims(token);
+        tokenBlacklistService.revoke(claims.getId(), claims.getExpiration().toInstant());
     }
 
     private void mergeCart(String cartId, Long clienteId, HttpServletResponse response) {

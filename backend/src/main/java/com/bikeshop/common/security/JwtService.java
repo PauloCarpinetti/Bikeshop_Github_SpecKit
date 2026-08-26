@@ -6,6 +6,7 @@ import io.jsonwebtoken.security.Keys;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +31,7 @@ public class JwtService {
   public String generateAccessToken(String subjectId, List<Role> roles) {
     Instant now = Instant.now();
     return Jwts.builder()
+        .id(UUID.randomUUID().toString())
         .subject(subjectId)
         .claim("roles", roles.stream().map(Enum::name).collect(Collectors.toList()))
         .claim("type", "access")
@@ -42,6 +44,7 @@ public class JwtService {
   public String generateRefreshToken(String subjectId) {
     Instant now = Instant.now();
     return Jwts.builder()
+        .id(UUID.randomUUID().toString())
         .subject(subjectId)
         .claim("type", "refresh")
         .issuedAt(Date.from(now))

@@ -1,5 +1,6 @@
 package com.bikeshop.payments;
 
+import com.bikeshop.common.exception.NotFoundException;
 import com.bikeshop.orders.OrderService;
 import com.bikeshop.orders.Pedido;
 import com.bikeshop.orders.PedidoStatus;
@@ -11,6 +12,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,8 +35,19 @@ public class PaymentController {
     }
 
     @PostMapping("/{orderId}/intents")
-    public OrderDto createIntent(@PathVariable Long orderId, @Valid @RequestBody CreatePaymentIntentRequest request) {
+    public OrderDto createIntent(Authentication authentication, @PathVariable Long orderId,
+                                  @Valid @RequestBody CreatePaymentIntentRequest request) {
         Pedido pedido = orderService.buscarPorId(orderId);
+        // Pedido de convidado (clienteId nulo) segue acessível sem login — preserva o guest
+        // checkout. Pedido de cliente autenticado só pode ter intenção criada pelo próprio dono;
+        // 404 em vez de 403 para não revelar a existência do pedido a quem não é dono (mesmo
+        // padrão de OrderQueryService.detalharPorCliente).
+        if (pedido.getClienteId() != null) {
+            Long clienteAutenticado = authentication != null ? Long.valueOf(authentication.getName()) : null;
+            if (!pedido.getClienteId().equals(clienteAutenticado)) {
+                throw new NotFoundException("Pedido", orderId);
+            }
+        }
         PaymentGatewayAdapter adapter = paymentGatewayResolver.resolve(request.provider());
 
         PaymentIntentResult intent = adapter.createIntent(pedido);

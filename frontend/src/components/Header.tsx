@@ -11,8 +11,8 @@ export function Header() {
   const { cliente, logout } = useAuth();
   const itemCount = cart?.itens.reduce((total, item) => total + item.quantidade, 0) ?? 0;
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     router.push("/products");
   }
 

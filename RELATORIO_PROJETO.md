@@ -244,6 +244,31 @@ Validado com testes automatizados (6 novos — 32 no total) e navegador: cliente
 
 ---
 
+## Sessão 2026-08-26 (continuação) — Fase 6 (Polish)
+
+Implementadas as 8 tarefas da Fase 6 (T088–T095), fechando o backlog do projeto (99/101 — restam apenas T023/T024, o E2E Playwright do MVP que não executa neste sandbox desde a Fase 3C).
+
+**Decisões de escopo** (alinhadas com o usuário antes de implementar): T088 (sync Meilisearch) mantida síncrona como já estava, sem migrar para evento assíncrono — risco de regressão maior que o benefício num "polish"; observabilidade (T089/T090) com Prometheus + Grafana + Loki + Promtail em vez de ELK completo (mais leve); hardening (T093) com todos os 4 achados reais corrigidos.
+
+**T093 — Hardening de segurança**: `WebhookSignatures.constantTimeEquals` (novo, `MessageDigest.isEqual`) substitui `.equals()` nas 3 verificações de assinatura/token de webhook (Stripe, Mercado Pago, PagSeguro) — mitiga timing attack. Bug real corrigido no Mercado Pago: o manifest da assinatura (`MercadoPagoPaymentAdapter.verifySignature`) usava `headers.getOrDefault("data-id", "")`, um header que não existe no webhook real (o id vem do corpo, campo `data.id`) — a assinatura nunca bateria contra um webhook de verdade; `parseWebhook` foi reordenado para extrair o id do payload antes de verificar. Logout/revogação de token: `JwtService` passou a incluir `jti` (claim de id único) em access e refresh tokens; `TokenBlacklistService` (novo, Redis, mesmo padrão de `CartRedisRepository`) marca um `jti` como revogado com TTL até a expiração original do token; `JwtAuthenticationFilter` passa a checar a blacklist antes de autenticar; `POST /auth/logout` (novo) revoga o access token do header e, se informado, o refresh token do corpo; `POST /auth/refresh` recusa refresh token revogado. Ownership em pagamentos: `POST /payments/{orderId}/intents` agora recusa (404, não 403 — não revela existência do pedido, mesmo padrão de `OrderQueryService.detalharPorCliente`) criar intenção para pedido de outro cliente autenticado; pedido de convidado (sem `clienteId`) permanece público, preservando o guest checkout. Comentário desatualizado em `SecurityConfig` (ainda falava em "reavaliar a partir da 3C") corrigido. 3 novos testes de contrato (`PaymentSecurityContractTest` — 35 no total).
+
+**T094 — Documentação da API**: `contracts/api-overview.md` tinha 2 divergências reais (`GET /products/{slug}/variants` e `POST /cart/merge` documentados mas nunca implementados como rotas — variações vêm embutidas no detalhe do produto, e o merge acontece internamente em `/auth/register`/`/auth/login`) e faltavam as rotas administrativas de leitura (`GET /admin/products`, `GET /admin/products/{id}`, `GET /admin/coupons`, `GET /admin/reviews`) — todas corrigidas/adicionadas; `POST /auth/logout` documentado.
+
+**T092 — Acessibilidade**: scan não encontrou violações graves (mesmo padrão já consistente desde sessões anteriores). Um achado real: `text-gray-400` sobre fundo branco em `products/[slug]/page.tsx` (rótulos de especificações técnicas/geometria) tinha contraste de 2.54:1 — abaixo do mínimo WCAG AA (4.5:1 para texto normal); corrigido para `text-gray-500` (4.83:1, já usado como tom "muted" padrão no resto do app).
+
+**T089/T090 — Observabilidade**: `infra/prometheus/prometheus.yml` faz scrape do backend via `host.docker.internal:8082` (o backend roda nativamente via `mvn spring-boot:run`, não em container — por isso não há descoberta de serviço do compose). Dashboard único `infra/grafana/dashboards/bikeshop-overview.json` com 4 linhas (Checkout, Pagamentos, Estoque, Pedidos), cada uma com taxa de requisições/taxa de erro 5xx/latência p95, usando as métricas HTTP já auto-instrumentadas pelo Micrometer (`http_server_requests_seconds_*`) — sem precisar instrumentar manualmente cada service; `management.metrics.distribution.percentiles-histogram.http.server.requests: true` adicionado ao `application.yml` para habilitar os buckets de histograma que o p95 depende. Logs: backend passou a logar em arquivo além de console (`logging.file.name: logs/backend.log`); Promtail lê esse arquivo montado do host (`../backend/logs`) e envia para o Loki — abordagem estática, não Docker service discovery, pelo mesmo motivo do Prometheus. 4 serviços novos no `docker-compose.yml`: `prometheus` (9090), `grafana` (3003, com acesso anônimo Viewer habilitado — conveniência de dev local), `loki` (3100), `promtail` (sem porta exposta).
+
+**Bugs e achados reais durante a validação manual** (`T091`, quickstart.md completo via navegador):
+1. **Processo backend órfão** — um `spring-boot:run` de uma sessão anterior (5C) tinha sobrevivido ao `Stop-Process` daquela sessão (o plugin do Maven forka um JVM filho com linha de comando própria, sem "spring-boot:run" nela — o kill anterior matou só o processo pai do Maven, não o filho) e continuou ocupando a porta 8082, servindo requisições com o código **antigo** (sem nenhuma mudança desta sessão) enquanto o novo processo falhava silenciosamente ao subir por conflito de porta. Descoberto ao investigar por que `/actuator/health` respondia OK mas o comportamento não batia com o código novo; corrigido matando o processo órfão pelo PID real (`Get-NetTCPConnection`/`Get-CimInstance Win32_Process`, já que `Get-Process` sozinho não identifica o processo certo).
+2. **Checkout falhando com "não conseguimos concluir seu pedido"** — não era regressão: o carrinho de testes acumulado ao longo de várias sessões anteriores tinha quantidade 8 de um item com só 4 em estoque; `GlobalExceptionHandler.handleBusiness` não loga (só o handler de `Exception` genérica loga), então o erro de estoque insuficiente não deixava rastro no log, parecendo uma falha "silenciosa". Corrigido esvaziando o carrinho pela UI e testando com quantidade 1 — checkout completou normalmente.
+3. **"Sair" não revogava nada de verdade** — ao testar o logout pelo navegador (não só pela API), percebi que `AuthContext.logout()` só limpava o `localStorage`, nunca chamando o `POST /auth/logout` novo — o hardening do item 3 do T093 existia no backend mas não tinha efeito prático para quem clicasse "Sair" na aplicação de verdade. Corrigido conectando `logout()` ao novo endpoint (best-effort — falha de rede não impede o logout local), com `services/auth.ts` ganhando a função `logout()`.
+
+Log de auditoria consultado durante a validação mostrou uma lacuna pré-existente (não desta fase): criação/edição de produto e cupom nunca chamou `AuditService`, só bloqueio de cliente, moderação de avaliação e status de pedido — o `quickstart.md` promete auditoria para "todas as ações" do Cenário 3. Fora do escopo aprovado desta sessão (T088–T095); sinalizado como tarefa em background para o usuário decidir se/quando puxar.
+
+Validado com testes automatizados (3 novos — 35 no total) e navegador: quickstart.md Cenário 1 (catálogo → carrinho → frete → checkout guest, Pedido #6 criado) e Cenário 3 (produto criado aparecendo no catálogo público, estoque ajustado, status de pedido atualizado para ENTREGUE, cupom aplicado com desconto correto e cupom expirado rejeitado) completos ponta a ponta; Cenário 2 validado de forma leve (cadastro, perfil). Prometheus com o target do backend `up` e queries retornando dados reais; Loki retornando logs reais do backend via `query_range`, incluindo uma entrada do próprio Log de Auditoria. Logout consultado via `read_network_requests` confirmando `POST /auth/logout → 200`.
+
+---
+
 ## Estado atual do projeto
 
 | Item | Status |
@@ -251,7 +276,7 @@ Validado com testes automatizados (6 novos — 32 no total) e navegador: cliente
 | Constituição | ✅ Definida |
 | Especificação (spec.md) | ✅ Completa, revisada e corrigida |
 | Plano técnico (plan.md + research/data-model/quickstart/contracts) | ✅ Completo |
-| Backlog de tarefas (tasks.md) | ✅ 101 tarefas, consistência validada — **91 concluídas** |
+| Backlog de tarefas (tasks.md) | ✅ 101 tarefas, consistência validada — **99 concluídas** (restam T023/T024, E2E Playwright do MVP — não executa neste sandbox) |
 | Fase 1 — Setup | ✅ Implementada e validada |
 | Fase 2 — Foundational | ✅ Implementada e validada |
 | Fase 3A — Catálogo e Carrinho | ✅ Implementada e validada |
@@ -262,7 +287,7 @@ Validado com testes automatizados (6 novos — 32 no total) e navegador: cliente
 | Fase 5A — Produtos e Estoque | ✅ Implementada e validada |
 | Fase 5B — Pedidos e Cupons | ✅ Implementada e validada |
 | Fase 5C — Clientes, Auditoria, Moderação e Fechamento | ✅ Implementada e validada (**User Story 3 completa — backoffice fechado**) |
-| Fase 6 — Polish | ⏳ Não iniciada |
+| Fase 6 — Polish | ✅ Implementada e validada (**projeto fechado**, salvo T023/T024) |
 
 ## URLs de desenvolvimento local (atuais)
 
@@ -272,6 +297,7 @@ Validado com testes automatizados (6 novos — 32 no total) e navegador: cliente
 - Frontend: `http://localhost:3002`
 - MySQL (container): porta `3308`
 - Redis: `6380` · RabbitMQ: `5672` (management `15672`) · Meilisearch: `7700`
+- Observabilidade (Fase 6): Grafana `3003` (dashboards de checkout/pagamentos/estoque/pedidos + Explore de logs) · Prometheus `9090` · Loki `3100` (sem UI própria, consultado via Grafana)
 
 ## Próximos passos recomendados
 
@@ -281,10 +307,11 @@ Validado com testes automatizados (6 novos — 32 no total) e navegador: cliente
 - Obter usuário/senha da API oficial dos Correios (`CORREIOS_API_USUARIO`/`CORREIOS_API_SENHA`) — hoje o frete usa uma estimativa local por peso cubado
 - Obter uma API key do **SendGrid** (`SENDGRID_API_KEY`) para envio real do e-mail de confirmação de pedido — hoje o envio é simulado (apenas logado)
 
-### 2. Fase 6 — Polish
+### 2. Itens conhecidos, fora do escopo das fases concluídas
 
-Dashboards de observabilidade, logs centralizados, auditoria de acessibilidade, hardening de segurança e validação final de performance contra os critérios de sucesso do `spec.md`.
+- Auditoria de criação/edição de produto e cupom (sinalizado como tarefa em background ao final da Fase 6 — ver seção da sessão 2026-08-26)
+- T023/T024 (E2E Playwright do MVP) — escrito, mas não executa neste sandbox; rodar `npm run test:e2e` num terminal fora do agente
 
 ## Resumo executivo
 
-As três user stories estão completas: MVP (catálogo, carrinho, checkout com pagamento/frete/cupom, autenticação com merge de carrinho), conta do cliente/pós-venda (perfil, endereços, histórico de pedidos com rastreamento, avaliações, troca/devolução com auditoria e notificação de status) e backoffice (gestão de produtos/estoque/pedidos/cupons, consulta e bloqueio de clientes, log de auditoria consultável e moderação de avaliações, com guarda de RBAC unificada no frontend) — tudo testado via testes automatizados (32) e navegador. Pagamento/frete/e-mail seguem simulados, prontos para credenciais reais assim que disponíveis. Resta apenas a Fase 6 (Polish): observabilidade, auditoria de acessibilidade, hardening de segurança e validação de performance — já detalhados em `tasks.md`.
+As três user stories e a Fase 6 (Polish) estão completas: MVP (catálogo, carrinho, checkout com pagamento/frete/cupom, autenticação com merge de carrinho), conta do cliente/pós-venda (perfil, endereços, histórico de pedidos com rastreamento, avaliações, troca/devolução com auditoria e notificação de status), backoffice (gestão de produtos/estoque/pedidos/cupons, consulta e bloqueio de clientes, log de auditoria consultável e moderação de avaliações, com guarda de RBAC unificada no frontend) e polimento (observabilidade com Prometheus/Grafana/Loki, hardening de segurança — logout/revogação de token, constant-time em webhooks, ownership em pagamentos —, acessibilidade e documentação de API revisadas) — tudo testado via testes automatizados (35) e navegador. Pagamento/frete/e-mail seguem simulados, prontos para credenciais reais assim que disponíveis. Restam apenas T023/T024 (E2E que não executa neste sandbox) e um item de auditoria sinalizado como follow-up — já detalhados em `tasks.md`.

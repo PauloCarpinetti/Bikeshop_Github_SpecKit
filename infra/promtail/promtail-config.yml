@@ -1,0 +1,21 @@
+# T090 (Fase 6): lê o arquivo de log do backend montado do host (../backend/logs no
+# docker-compose.yml) — o backend roda nativamente, não em container, então não há logs de
+# container Docker para descobrir via service discovery; o scrape é estático sobre o arquivo.
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: bikeshop-backend
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: bikeshop-backend
+          service: backend
+          __path__: /var/log/bikeshop/*.log

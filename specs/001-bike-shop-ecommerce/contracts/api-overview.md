@@ -14,8 +14,7 @@ Contrato REST exposto pelo backend Spring Boot, documentado formalmente via Spri
 | Método | Rota | Descrição | Requisito |
 |---|---|---|---|
 | GET | `/products` | Lista produtos com busca (`q`) e filtros facetados (categoria, preço, marca, tamanho, modalidade) | FR-003 |
-| GET | `/products/{slug}` | Detalhe do produto: especificações, geometria, imagens, variações | FR-002 |
-| GET | `/products/{slug}/variants` | Lista variações (SKU, atributos, preço, disponibilidade) | FR-001 |
+| GET | `/products/{slug}` | Detalhe do produto: especificações, geometria, imagens e variações (SKU, atributos, preço, disponibilidade) já embutidas na resposta — não há endpoint separado para variações | FR-001, FR-002 |
 
 ## Carrinho (`/cart`) — visitante ou autenticado
 
@@ -25,7 +24,8 @@ Contrato REST exposto pelo backend Spring Boot, documentado formalmente via Spri
 | POST | `/cart/items` | Adiciona item (SKU + quantidade) | FR-004 |
 | PATCH | `/cart/items/{itemId}` | Atualiza quantidade | FR-004 |
 | DELETE | `/cart/items/{itemId}` | Remove item | FR-004 |
-| POST | `/cart/merge` | Mescla carrinho de visitante ao carrinho do cliente após login/cadastro | FR-004 |
+
+O merge do carrinho de visitante ao carrinho do cliente não é uma rota própria — acontece internamente em `POST /auth/register` e `POST /auth/login` (ver seção Autenticação).
 
 ## Checkout (`/checkout`)
 
@@ -57,21 +57,23 @@ Contrato REST exposto pelo backend Spring Boot, documentado formalmente via Spri
 
 | Método | Rota | Descrição | Requisito |
 |---|---|---|---|
-| POST | `/auth/register` | Cadastro de cliente | FR-008 |
-| POST | `/auth/login` | Login, emite JWT | FR-008 |
-| POST | `/auth/refresh` | Renova token | — |
+| POST | `/auth/register` | Cadastro de cliente; mescla o carrinho de visitante da sessão atual ao carrinho do cliente | FR-004, FR-008 |
+| POST | `/auth/login` | Login, emite JWT; mescla o carrinho de visitante ao carrinho do cliente | FR-004, FR-008 |
+| POST | `/auth/refresh` | Renova token (recusa se o refresh token estiver revogado) | — |
+| POST | `/auth/logout` | Revoga o access token da requisição e, se informado, o refresh token — via blacklist no Redis (T093) | — |
 
 ## Backoffice (`/admin`) — papéis administrativo/operacional
 
 | Método | Rota | Descrição | Requisito |
 |---|---|---|---|
-| POST/PUT/DELETE | `/admin/products` | CRUD de produtos e variações | FR-001, FR-009 |
+| GET/POST/PUT/DELETE | `/admin/products` | CRUD de produtos (`GET` lista e `GET /{id}` detalha) | FR-001, FR-009 |
+| POST/PUT | `/admin/products/{id}/variants` | Adiciona/atualiza variação de um produto | FR-001, FR-009 |
 | PATCH | `/admin/products/{sku}/stock` | Ajuste manual de estoque | FR-009 |
 | GET/PATCH | `/admin/orders` | Lista e atualiza status de pedidos, emite documentos de envio | FR-007, FR-009 |
-| POST/PUT/DELETE | `/admin/coupons` | CRUD de cupons de desconto | FR-009 |
+| GET/POST/PUT/DELETE | `/admin/coupons` | CRUD de cupons de desconto (`GET` lista) | FR-009 |
 | GET | `/admin/customers` | Consulta básica de clientes | FR-009 |
 | PATCH | `/admin/customers/{id}/status` | Bloqueia/desbloqueia cliente (sem editar dados pessoais sensíveis) | FR-009 |
-| PATCH | `/admin/reviews/{id}` | Modera avaliação (aprova/rejeita) | FR-009 |
+| GET/PATCH | `/admin/reviews` | Lista avaliações para moderação (`GET`) e aprova/rejeita (`PATCH /{id}`) | FR-009 |
 | GET | `/admin/audit-logs` | Consulta de logs de auditoria | FR-011 |
 
 Todas as rotas sob `/admin` exigem papel com privilégio adequado (RBAC, Princípio III) e geram entrada no Log de Auditoria para operações de escrita (FR-011).
