@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { useRequireAdmin } from "@/features/admin/useRequireAdmin";
+import { useRequireAdmin } from "@/features/admin/guards";
+import { AdminNav } from "@/features/admin/AdminNav";
 import { ApiRequestError } from "@/services/apiClient";
 import { listAdminOrders, updateOrderStatus } from "@/services/admin";
 import type { Order } from "@/services/checkout";
@@ -67,10 +67,7 @@ export default function AdminOrdersPage() {
     <main className="mx-auto max-w-4xl px-6 py-12">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Pedidos (backoffice)</h1>
-        <div className="flex gap-3 text-sm">
-          <Link href="/admin/products" className="underline">Produtos</Link>
-          <Link href="/admin/coupons" className="underline">Cupons</Link>
-        </div>
+        <AdminNav current="/admin/orders" />
       </div>
 
       {error && <p className="mt-4 rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}

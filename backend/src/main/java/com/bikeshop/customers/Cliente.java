@@ -38,6 +38,9 @@ public class Cliente {
     @Column(nullable = false)
     private Role role = Role.CUSTOMER;
 
+    @Column(nullable = false)
+    private boolean bloqueado = false;
+
     @Column(name = "criado_em", nullable = false)
     private Instant criadoEm = Instant.now();
 
@@ -80,6 +83,10 @@ public class Cliente {
         return role;
     }
 
+    public boolean isBloqueado() {
+        return bloqueado;
+    }
+
     public Instant getCriadoEm() {
         return criadoEm;
     }
@@ -94,5 +101,14 @@ public class Cliente {
 
     void updateSenhaHash(String senhaHash) {
         this.senhaHash = senhaHash;
+    }
+
+    // Público: gerido pelo backoffice (com.bikeshop.admin), pacote diferente do cliente (FR-009).
+    public void bloquear() {
+        this.bloqueado = true;
+    }
+
+    public void desbloquear() {
+        this.bloqueado = false;
     }
 }

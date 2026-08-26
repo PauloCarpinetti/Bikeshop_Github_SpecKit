@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { useRequireAdmin } from "@/features/admin/useRequireAdmin";
+import { useRequireAdmin } from "@/features/admin/guards";
+import { AdminNav } from "@/features/admin/AdminNav";
 import { ApiRequestError } from "@/services/apiClient";
 import { createCoupon, deactivateCoupon, listCoupons, type Coupon, type CouponInput } from "@/services/admin";
 
@@ -92,9 +92,8 @@ export default function AdminCouponsPage() {
     <main className="mx-auto max-w-3xl px-6 py-12">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Cupons (backoffice)</h1>
-        <div className="flex gap-3 text-sm">
-          <Link href="/admin/products" className="underline">Produtos</Link>
-          <Link href="/admin/orders" className="underline">Pedidos</Link>
+        <div className="flex items-center gap-3 text-sm">
+          <AdminNav current="/admin/coupons" />
           <button type="button" onClick={() => setIsFormOpen((open) => !open)}
                   className="rounded bg-gray-900 px-3 py-1.5 font-medium text-white hover:bg-gray-700">
             {isFormOpen ? "Cancelar" : "Novo cupom"}

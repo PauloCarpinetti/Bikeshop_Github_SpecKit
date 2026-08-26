@@ -88,4 +88,8 @@ public class Avaliacao {
     public Instant getCriadoEm() {
         return criadoEm;
     }
+
+    void moderar(AvaliacaoStatus status) {
+        this.status = status;
+    }
 }

@@ -118,3 +118,61 @@ export async function updateCoupon(id: number, input: CouponInput): Promise<Coup
 export async function deactivateCoupon(id: number): Promise<void> {
   await apiFetch(`/admin/coupons/${id}`, z.unknown(), { method: "DELETE" });
 }
+
+export const customerSchema = z.object({
+  id: z.number(),
+  nome: z.string(),
+  email: z.string(),
+  telefone: z.string().nullable(),
+  bloqueado: z.boolean(),
+  criadoEm: z.string(),
+});
+
+export type Customer = z.infer<typeof customerSchema>;
+
+export async function listCustomers(): Promise<Customer[]> {
+  return apiFetch("/admin/customers", z.array(customerSchema));
+}
+
+export async function updateCustomerStatus(id: number, bloqueado: boolean): Promise<Customer> {
+  return apiFetch(`/admin/customers/${id}/status`, customerSchema, { method: "PATCH", body: { bloqueado } });
+}
+
+export const auditLogSchema = z.object({
+  id: z.number(),
+  actor: z.string(),
+  actorRole: z.string(),
+  action: z.string(),
+  entityName: z.string(),
+  entityId: z.string(),
+  previousState: z.string().nullable(),
+  newState: z.string().nullable(),
+  occurredAt: z.string(),
+});
+
+export type AuditLogEntry = z.infer<typeof auditLogSchema>;
+
+export async function listAuditLogs(): Promise<AuditLogEntry[]> {
+  return apiFetch("/admin/audit-logs", z.array(auditLogSchema));
+}
+
+export const reviewAdminSchema = z.object({
+  id: z.number(),
+  produtoId: z.number(),
+  clienteId: z.number(),
+  pedidoId: z.number(),
+  nota: z.number(),
+  comentario: z.string().nullable(),
+  status: z.string(),
+  criadoEm: z.string(),
+});
+
+export type ReviewAdmin = z.infer<typeof reviewAdminSchema>;
+
+export async function listReviewsForModeration(): Promise<ReviewAdmin[]> {
+  return apiFetch("/admin/reviews", z.array(reviewAdminSchema));
+}
+
+export async function moderateReview(id: number, aprovado: boolean): Promise<ReviewAdmin> {
+  return apiFetch(`/admin/reviews/${id}`, reviewAdminSchema, { method: "PATCH", body: { aprovado } });
+}

@@ -228,6 +228,22 @@ Validado com testes automatizados (4 novos — `OrderAdminContractTest`, `Coupon
 
 ---
 
+## Sessão 2026-08-26 — Sub-bloco 5C (Clientes, Auditoria, Moderação e Fechamento do Backoffice)
+
+Implementadas as 10 tarefas do sub-bloco 5C, fechando a Fase 5 (User Story 3) e o backoffice como um todo:
+
+**Backend**: `Cliente` ganhou o campo `bloqueado` (Flyway V8) + métodos `bloquear()`/`desbloquear()` (públicos, pois `CustomerAdminService` fica num pacote diferente — mesmo padrão de `ProductAdminService`/`VariacaoProduto` da 5A); `AuthController.login` passou a recusar (`403 CONTA_BLOQUEADA`) cliente bloqueado, depois de validar a senha. `CustomerAdminService`/`CustomerAdminController` expõem `GET /admin/customers` (só papel `CUSTOMER`, nunca admin/operador) e `PATCH /admin/customers/{id}/status`, sem tocar em nome/e-mail/senha (Princípio II) — cada mudança grava no Log de Auditoria (FR-011). `AuditLogAdminService`/`AuditLogController` expõem `GET /admin/audit-logs` somente-leitura (últimas 200 entradas, mais recentes primeiro) — endpoint que só existia como gravação (`AuditService`, Fase 2) até aqui. `Avaliacao` ganhou o mutador `moderar(status)` e `ReviewService` os métodos `listarParaModeracao`/`statusAtual`/`moderar`; `ReviewModerationService`/`ReviewModerationController` expõem `GET/PATCH /admin/reviews/{id}` (aprovar reabre `PUBLICADA`, rejeitar move para `MODERADA`, reaproveitando o enum já existente da 4B) — mesmo padrão de auditoria em duas etapas (lê estado anterior, aplica, grava) usado por `OrderAdminService` na 5B. `GET /admin/customers`/`GET /admin/reviews` não estavam explícitos na tabela de contratos (só o `PATCH`/bloqueio estavam) — adicionados por necessidade da UI, mesmo racional já registrado em T073 na 5A.
+
+**Frontend**: três páginas novas — `/admin/customers` (listar/bloquear/desbloquear), `/admin/reviews` (listar/aprovar/rejeitar) e `/admin/audit-logs` (somente leitura). `useRequireAdmin` foi consolidado em `frontend/src/features/admin/guards.ts` (T087, arquivo antigo `useRequireAdmin.ts` removido) e todas as 7 páginas do backoffice foram migradas para importar dali. Como a navegação cruzada entre páginas do backoffice (antes copiada manualmente em cada uma, 2-3 links por página) cresceria para 6 links por página com as novas telas, foi extraído um componente `AdminNav` compartilhado (`features/admin/AdminNav.tsx`) e as 4 páginas já existentes (produtos, estoque, pedidos, cupons) também foram migradas para usá-lo.
+
+**Testes**: 3 novos testes de contrato (`AuditLogContractTest`, `CustomerAdminContractTest`, `ReviewModerationContractTest` — 32 no total): bloqueio de cliente impedindo login subsequente e liberando após desbloqueio, ação administrativa aparecendo no log de auditoria consultável, e moderação de avaliação (rejeitar → `MODERADA`, aprovar de volta → `PUBLICADA`), todos com o caso de RBAC negando acesso a cliente comum. Escrito também `frontend/tests/e2e/admin-backoffice.spec.ts` (T071, cenário 3 completo: produto → estoque → pedido → cupom) — não executa neste sandbox (mesma limitação de subprocesso do `chrome.exe` já registrada na sessão da 3C), mas o fluxo equivalente foi validado manualmente via navegador nesta sessão.
+
+**Bugs/decisões não triviais**: nenhum bug real desta vez — os padrões já estabelecidos nas fases 5A/5B (auditoria em duas etapas, mutadores públicos entre pacotes, rotas reais sem route group) se aplicaram diretamente sem surpresas. Uma decisão de design: `GET /admin/customers` filtra por papel `CUSTOMER` para que um admin nunca possa bloquear outro admin/operador por acidente — rejeitado com `400 CLIENTE_INVALIDO` se tentado diretamente pela API.
+
+Validado com testes automatizados (6 novos — 32 no total) e navegador: cliente bloqueado/desbloqueado com o log de auditoria refletindo a mudança, avaliação rejeitada e reaprovada, guarda RBAC redirecionando visitante para `/login` ao tentar acessar `/admin/customers` diretamente.
+
+---
+
 ## Estado atual do projeto
 
 | Item | Status |
@@ -235,7 +251,7 @@ Validado com testes automatizados (4 novos — `OrderAdminContractTest`, `Coupon
 | Constituição | ✅ Definida |
 | Especificação (spec.md) | ✅ Completa, revisada e corrigida |
 | Plano técnico (plan.md + research/data-model/quickstart/contracts) | ✅ Completo |
-| Backlog de tarefas (tasks.md) | ✅ 101 tarefas, consistência validada — **81 concluídas** |
+| Backlog de tarefas (tasks.md) | ✅ 101 tarefas, consistência validada — **91 concluídas** |
 | Fase 1 — Setup | ✅ Implementada e validada |
 | Fase 2 — Foundational | ✅ Implementada e validada |
 | Fase 3A — Catálogo e Carrinho | ✅ Implementada e validada |
@@ -245,7 +261,7 @@ Validado com testes automatizados (4 novos — `OrderAdminContractTest`, `Coupon
 | Fase 4B — Avaliações, Trocas/Devoluções e Notificação de Status | ✅ Implementada e validada (**User Story 2 completa**) |
 | Fase 5A — Produtos e Estoque | ✅ Implementada e validada |
 | Fase 5B — Pedidos e Cupons | ✅ Implementada e validada |
-| Fase 5C — Clientes, Auditoria, Moderação e Fechamento | ⏳ Não iniciada |
+| Fase 5C — Clientes, Auditoria, Moderação e Fechamento | ✅ Implementada e validada (**User Story 3 completa — backoffice fechado**) |
 | Fase 6 — Polish | ⏳ Não iniciada |
 
 ## URLs de desenvolvimento local (atuais)
@@ -265,14 +281,10 @@ Validado com testes automatizados (4 novos — `OrderAdminContractTest`, `Coupon
 - Obter usuário/senha da API oficial dos Correios (`CORREIOS_API_USUARIO`/`CORREIOS_API_SENHA`) — hoje o frete usa uma estimativa local por peso cubado
 - Obter uma API key do **SendGrid** (`SENDGRID_API_KEY`) para envio real do e-mail de confirmação de pedido — hoje o envio é simulado (apenas logado)
 
-### 2. Sub-bloco 5C — Fecha o Backoffice (User Story 3)
-
-Clientes (consulta/bloqueio), log de auditoria, moderação de avaliações, guardas de RBAC formais no frontend (`features/admin/guards.ts`, consolidando o `useRequireAdmin` já usado desde a 5A) e o E2E completo do backoffice — já detalhados em `tasks.md`. Com `/admin/orders` já permitindo levar um pedido a `ENTREGUE` (5B), o teste E2E completo de pós-venda da Fase 4B (T051) já pode ser refeito sem o `UPDATE` SQL manual usado até aqui.
-
-### 3. Fase 6 — Polish
+### 2. Fase 6 — Polish
 
 Dashboards de observabilidade, logs centralizados, auditoria de acessibilidade, hardening de segurança e validação final de performance contra os critérios de sucesso do `spec.md`.
 
 ## Resumo executivo
 
-O MVP (User Story 1) e a conta do cliente/pós-venda (User Story 2) estão completos, e o backoffice (User Story 3) está quase completo: catálogo com busca, carrinho, checkout com pagamento, frete e cupons de desconto (pagamento/frete simulados, prontos para credenciais reais), autenticação com merge de carrinho, perfil/endereços, histórico de pedidos com rastreamento, avaliações de produto, solicitação de troca/devolução com auditoria e notificação de status, e gestão administrativa de produtos/estoque/pedidos/cupons — tudo testado via testes automatizados e navegador. Resta clientes/auditoria/moderação no backoffice, e os itens de polimento — já detalhados em `tasks.md`.
+As três user stories estão completas: MVP (catálogo, carrinho, checkout com pagamento/frete/cupom, autenticação com merge de carrinho), conta do cliente/pós-venda (perfil, endereços, histórico de pedidos com rastreamento, avaliações, troca/devolução com auditoria e notificação de status) e backoffice (gestão de produtos/estoque/pedidos/cupons, consulta e bloqueio de clientes, log de auditoria consultável e moderação de avaliações, com guarda de RBAC unificada no frontend) — tudo testado via testes automatizados (32) e navegador. Pagamento/frete/e-mail seguem simulados, prontos para credenciais reais assim que disponíveis. Resta apenas a Fase 6 (Polish): observabilidade, auditoria de acessibilidade, hardening de segurança e validação de performance — já detalhados em `tasks.md`.

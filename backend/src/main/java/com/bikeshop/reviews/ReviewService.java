@@ -8,7 +8,9 @@ import com.bikeshop.orders.OrderRepository;
 import com.bikeshop.orders.Pedido;
 import com.bikeshop.orders.PedidoStatus;
 import com.bikeshop.reviews.dto.CreateReviewRequest;
+import com.bikeshop.reviews.dto.ReviewAdminDto;
 import com.bikeshop.reviews.dto.ReviewDto;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,8 +64,34 @@ public class ReviewService {
         return toDto(avaliacao);
     }
 
+    @Transactional(readOnly = true)
+    public List<ReviewAdminDto> listarParaModeracao() {
+        return avaliacaoRepository.findAllByOrderByCriadoEmDesc().stream().map(this::toAdminDto).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public String statusAtual(Long id) {
+        return buscarAvaliacao(id).getStatus().name();
+    }
+
+    public ReviewAdminDto moderar(Long id, boolean aprovado) {
+        Avaliacao avaliacao = buscarAvaliacao(id);
+        avaliacao.moderar(aprovado ? AvaliacaoStatus.PUBLICADA : AvaliacaoStatus.MODERADA);
+        return toAdminDto(avaliacao);
+    }
+
+    private Avaliacao buscarAvaliacao(Long id) {
+        return avaliacaoRepository.findById(id).orElseThrow(() -> new NotFoundException("Avaliação", id));
+    }
+
     private ReviewDto toDto(Avaliacao avaliacao) {
         return new ReviewDto(avaliacao.getId(), avaliacao.getProdutoId(), avaliacao.getPedidoId(),
                 avaliacao.getNota(), avaliacao.getComentario(), avaliacao.getStatus().name(), avaliacao.getCriadoEm());
+    }
+
+    private ReviewAdminDto toAdminDto(Avaliacao avaliacao) {
+        return new ReviewAdminDto(avaliacao.getId(), avaliacao.getProdutoId(), avaliacao.getClienteId(),
+                avaliacao.getPedidoId(), avaliacao.getNota(), avaliacao.getComentario(), avaliacao.getStatus().name(),
+                avaliacao.getCriadoEm());
     }
 }

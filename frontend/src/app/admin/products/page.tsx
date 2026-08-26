@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { useRequireAdmin } from "@/features/admin/useRequireAdmin";
+import { useRequireAdmin } from "@/features/admin/guards";
+import { AdminNav } from "@/features/admin/AdminNav";
 import { ApiRequestError } from "@/services/apiClient";
 import {
   addVariant,
@@ -141,10 +141,8 @@ export default function AdminProductsPage() {
     <main className="mx-auto max-w-4xl px-6 py-12">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Produtos (backoffice)</h1>
-        <div className="flex gap-3 text-sm">
-          <Link href="/admin/inventory" className="underline">Ajustar estoque</Link>
-          <Link href="/admin/orders" className="underline">Pedidos</Link>
-          <Link href="/admin/coupons" className="underline">Cupons</Link>
+        <div className="flex items-center gap-3 text-sm">
+          <AdminNav current="/admin/products" />
           <button
             type="button"
             onClick={() => setIsCreateOpen((open) => !open)}

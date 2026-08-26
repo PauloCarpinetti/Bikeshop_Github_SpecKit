@@ -290,21 +290,21 @@ Dividida em três sub-blocos (mesmo racional das Fases 3 e 4): 5A entrega a gest
 
 #### Tests
 
-- [ ] T070 [P] [US3] Teste de contrato para `GET /admin/audit-logs` em `backend/src/test/java/com/bikeshop/admin/AuditLogContractTest.java`
-- [ ] T070b [P] [US3] Teste de contrato para `GET /admin/customers` e `PATCH /admin/customers/{id}/status` em `backend/src/test/java/com/bikeshop/admin/CustomerAdminContractTest.java`
-- [ ] T070c [P] [US3] Teste de contrato para `PATCH /admin/reviews/{id}` (moderação de avaliações, FR-009) em `backend/src/test/java/com/bikeshop/admin/ReviewModerationContractTest.java`
-- [ ] T071 [US3] Teste de integração E2E (Playwright) criação de produto, ajuste de estoque, atualização de pedido e criação de cupom em `frontend/tests/e2e/admin-backoffice.spec.ts`
-- [ ] T072 [US3] Checks de privacidade, RBAC, acessibilidade e observabilidade da história
+- [X] T070 [P] [US3] Teste de contrato para `GET /admin/audit-logs` em `backend/src/test/java/com/bikeshop/admin/AuditLogContractTest.java`
+- [X] T070b [P] [US3] Teste de contrato para `GET /admin/customers` e `PATCH /admin/customers/{id}/status` em `backend/src/test/java/com/bikeshop/admin/CustomerAdminContractTest.java`
+- [X] T070c [P] [US3] Teste de contrato para `PATCH /admin/reviews/{id}` (moderação de avaliações, FR-009) em `backend/src/test/java/com/bikeshop/admin/ReviewModerationContractTest.java`
+- [X] T071 [US3] Teste de integração E2E (Playwright) criação de produto, ajuste de estoque, atualização de pedido e criação de cupom em `frontend/tests/e2e/admin-backoffice.spec.ts` (escrito; não executa neste sandbox — mesma limitação de `chrome.exe` já registrada na 3C — fluxo equivalente validado manualmente via navegador)
+- [X] T072 [US3] Checks de privacidade, RBAC, acessibilidade e observabilidade da história — RBAC (backend 403 + guarda de frontend), privacidade (bloqueio de cliente não expõe/edita dados pessoais sensíveis), acessibilidade (sem inputs sem `label`/`htmlFor` nas novas telas) e observabilidade (todas as ações administrativas sensíveis passam por `AuditService`, FR-011)
 
 #### Implementation
 
-- [ ] T080 [US3] Implementar `GET /admin/customers` (listagem básica) e `PATCH /admin/customers/{id}/status` (bloquear/desbloquear cliente, sem editar dados pessoais sensíveis) em `backend/src/main/java/com/bikeshop/admin/CustomerAdminController.java`
-- [ ] T081 [US3] Implementar `GET /admin/audit-logs` em `backend/src/main/java/com/bikeshop/admin/AuditLogController.java` (depende de T015 da fundação)
-- [ ] T081b [US3] Implementar moderação de avaliações (`PATCH /admin/reviews/{id}` para aprovar/rejeitar, FR-009) em `backend/src/main/java/com/bikeshop/admin/ReviewModerationController.java` (depende de T058 da US2)
-- [ ] T086 [US3] Construir UI de visualização de log de auditoria em `frontend/src/app/(admin)/audit-logs/`
-- [ ] T087 [US3] Aplicar guardas de rota RBAC nas rotas administrativas do frontend em `frontend/src/features/admin/guards.ts` (depende de T082–T086)
+- [X] T080 [US3] Implementar `GET /admin/customers` (listagem básica) e `PATCH /admin/customers/{id}/status` (bloquear/desbloquear cliente, sem editar dados pessoais sensíveis) em `backend/src/main/java/com/bikeshop/admin/CustomerAdminController.java`
+- [X] T081 [US3] Implementar `GET /admin/audit-logs` em `backend/src/main/java/com/bikeshop/admin/AuditLogController.java` (depende de T015 da fundação)
+- [X] T081b [US3] Implementar moderação de avaliações (`PATCH /admin/reviews/{id}` para aprovar/rejeitar, FR-009) em `backend/src/main/java/com/bikeshop/admin/ReviewModerationController.java` (depende de T058 da US2)
+- [X] T086 [US3] Construir UI de visualização de log de auditoria em `frontend/src/app/admin/audit-logs/` (caminho real sem route group, mesmo motivo de T082–T085 — `(admin)/audit-logs` colidiria com o segmento real `admin/` já usado por produtos/pedidos/etc.)
+- [X] T087 [US3] Aplicar guardas de rota RBAC nas rotas administrativas do frontend em `frontend/src/features/admin/guards.ts` (depende de T082–T086) — consolida o antigo `useRequireAdmin.ts`; todas as 7 páginas do backoffice foram atualizadas para importar daqui
 
-**Checkpoint 5C**: ✅ (ao concluir) Todas as user stories funcionando de forma independente — backoffice completo.
+**Checkpoint 5C**: ✅ Atingido e validado (testes automatizados + navegador) em 2026-08-26. Consulta e bloqueio/desbloqueio de cliente (login recusado com `CONTA_BLOQUEADA` enquanto bloqueado), log de auditoria consultável no backoffice, moderação de avaliação (aprovar/rejeitar) e guarda RBAC unificada em todas as telas administrativas — backoffice completo (User Story 3).
 
 ---
 

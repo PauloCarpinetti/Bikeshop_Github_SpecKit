@@ -68,6 +68,11 @@ public class AuthController {
                 .filter(c -> passwordEncoder.matches(request.senha(), c.getSenhaHash()))
                 .orElseThrow(() -> new BusinessException("CREDENCIAIS_INVALIDAS", "E-mail ou senha inválidos", HttpStatus.UNAUTHORIZED));
 
+        if (cliente.isBloqueado()) {
+            throw new BusinessException("CONTA_BLOQUEADA",
+                    "Esta conta está bloqueada. Entre em contato com o suporte.", HttpStatus.FORBIDDEN);
+        }
+
         mergeCart(cartId, cliente.getId(), response);
         return toAuthResponse(cliente);
     }
